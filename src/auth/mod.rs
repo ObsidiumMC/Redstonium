@@ -3,10 +3,9 @@ use oauth2::{
     AuthUrl, ClientId, RedirectUrl, TokenUrl,
     basic::BasicClient, AuthorizationCode, CsrfToken, Scope, TokenResponse,
 };
-use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION, CONTENT_TYPE};
+use reqwest::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
-use std::io::{BufRead, stdin};
-use url::Url;
+use std::io::stdin;
 
 // Microsoft OAuth2 constants - updated to use the correct endpoints
 const MS_AUTH_URL: &str = "https://login.live.com/oauth20_authorize.srf";
