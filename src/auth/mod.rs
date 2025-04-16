@@ -1,4 +1,5 @@
-use anyhow::Result;
+use anyhow::{Result, Context};
+use log::{debug, info, warn, error, trace};
 use oauth2::{
     AuthUrl, ClientId, RedirectUrl, TokenUrl,
     basic::BasicClient, AuthorizationCode, CsrfToken, Scope, TokenResponse,
@@ -146,28 +147,49 @@ struct Entitlement {
 /// The main authentication function that orchestrates the entire Minecraft auth flow
 pub async fn authenticate() -> Result<AuthResult> {
     // Step 1: Get Microsoft OAuth token
-    let ms_token = get_microsoft_token("00000000402b5328").await?;
-    println!("✓ Microsoft authentication successful");
+    info!("Starting Microsoft OAuth authentication process");
+    debug!("Using Microsoft OAuth endpoints: Auth URL: {}, Token URL: {}", MS_AUTH_URL, MS_TOKEN_URL);
+    let ms_token = get_microsoft_token("00000000402b5328")
+        .await
+        .context("Failed to get Microsoft OAuth token")?;
+    info!("✓ Microsoft authentication successful");
     
     // Step 2: Get Xbox Live token using Microsoft token
-    let (xbl_token, user_hash) = get_xbox_live_token(&ms_token).await?;
-    println!("✓ Xbox Live authentication successful");
+    info!("Starting Xbox Live authentication");
+    let (xbl_token, user_hash) = get_xbox_live_token(&ms_token)
+        .await
+        .context("Failed to get Xbox Live token")?;
+    info!("✓ Xbox Live authentication successful");
+    debug!("Retrieved user hash: {}", user_hash);
     
     // Step 3: Get XSTS token using Xbox Live token
-    let xsts_token = get_xsts_token(&xbl_token).await?;
-    println!("✓ XSTS authentication successful");
+    info!("Starting XSTS authentication");
+    let xsts_token = get_xsts_token(&xbl_token)
+        .await
+        .context("Failed to get XSTS token")?;
+    info!("✓ XSTS authentication successful");
     
     // Step 4: Authenticate with Minecraft using XSTS token
-    let minecraft_token = get_minecraft_token(&xsts_token, &user_hash).await?;
-    println!("✓ Minecraft authentication successful");
+    info!("Starting Minecraft authentication");
+    let minecraft_token = get_minecraft_token(&xsts_token, &user_hash)
+        .await
+        .context("Failed to get Minecraft token")?;
+    info!("✓ Minecraft authentication successful");
+    trace!("Minecraft token length: {}", minecraft_token.len());
     
     // Step 5: Verify game ownership
-    verify_game_ownership(&minecraft_token).await?;
-    println!("✓ Game ownership verified");
+    info!("Verifying Minecraft game ownership");
+    verify_game_ownership(&minecraft_token)
+        .await
+        .context("Failed to verify game ownership")?;
+    info!("✓ Game ownership verified");
     
     // Step 6: Get player profile
-    let profile = get_player_profile(&minecraft_token).await?;
-    println!("✓ Player profile retrieved");
+    info!("Retrieving player profile");
+    let profile = get_player_profile(&minecraft_token)
+        .await
+        .context("Failed to get player profile")?;
+    info!("✓ Player profile retrieved for: {}", profile.name);
     
     Ok(AuthResult {
         access_token: minecraft_token,
@@ -177,15 +199,18 @@ pub async fn authenticate() -> Result<AuthResult> {
 
 /// Get a Microsoft OAuth token using the device code flow
 async fn get_microsoft_token(client_id: &str) -> Result<String> {
+    debug!("Creating OAuth client with client ID: {}", client_id);
+    
     let oauth_client = BasicClient::new(
         ClientId::new(client_id.to_string()),
         None, // No client secret for public clients
-        AuthUrl::new(MS_AUTH_URL.to_string())?,
-        Some(TokenUrl::new(MS_TOKEN_URL.to_string())?),
+        AuthUrl::new(MS_AUTH_URL.to_string()).context("Invalid Microsoft Auth URL")?,
+        Some(TokenUrl::new(MS_TOKEN_URL.to_string()).context("Invalid Microsoft Token URL")?)
     )
-    .set_redirect_uri(RedirectUrl::new(REDIRECT_URI.to_string())?);
+    .set_redirect_uri(RedirectUrl::new(REDIRECT_URI.to_string()).context("Invalid redirect URI")?);
     
     // Generate the authorization URL
+    debug!("Generating authorization URL with scopes: XboxLive.signin, offline_access");
     let (auth_url, _csrf_token) = oauth_client
         .authorize_url(CsrfToken::new_random)
         .add_scope(Scope::new("XboxLive.signin".to_string()))
@@ -193,29 +218,35 @@ async fn get_microsoft_token(client_id: &str) -> Result<String> {
         .url();
     
     // Open the browser for the user to log in
-    println!("Opening browser for Microsoft authentication...");
-    webbrowser::open(auth_url.as_str())?;
+    info!("Opening browser for Microsoft authentication...");
+    webbrowser::open(auth_url.as_str()).context("Failed to open web browser for authentication")?;
     
     // After redirect, user will see the authorization code
-    println!("Please complete the login in your browser.");
-    println!("After login, you'll be redirected to a page. Look for a URL parameter that says 'code='");
-    println!("Please copy ONLY the code part (after 'code=' and before any '&' character if present) and paste it here:");
+    info!("Please complete the login in your browser.");
+    info!("After login, you'll be redirected to a page. Look for a URL parameter that says 'code='");
+    info!("Please copy ONLY the code part (after 'code=' and before any '&' character if present) and paste it here:");
     
     let mut code = String::new();
-    stdin().read_line(&mut code)?;
+    stdin().read_line(&mut code).context("Failed to read authorization code from stdin")?;
     code = code.trim().to_string();
     
     if code.is_empty() {
+        error!("No authorization code provided");
         return Err(anyhow::anyhow!("No authorization code provided"));
     }
     
-    println!("Exchanging authorization code for access token...");
+    info!("Exchanging authorization code for access token...");
+    debug!("Authorization code length: {}", code.len());
     
     // Exchange authorization code for access token
     let token_result = oauth_client
         .exchange_code(AuthorizationCode::new(code))
         .request_async(oauth2::reqwest::async_http_client)
-        .await?;
+        .await
+        .context("Failed to exchange authorization code for token")?;
+    
+    debug!("Successfully received access token");
+    trace!("Access token length: {}", token_result.access_token().secret().len());
     
     Ok(token_result.access_token().secret().clone())
 }
@@ -235,23 +266,40 @@ async fn get_xbox_live_token(ms_token: &str) -> Result<(String, String)> {
         token_type: "JWT".to_string(),
     };
     
-    println!("Authenticating with Xbox Live...");
+    debug!("Sending authentication request to Xbox Live: {}", XBL_AUTH_URL);
     let response = client.post(XBL_AUTH_URL)
         .header(CONTENT_TYPE, "application/json")
         .header(ACCEPT, "application/json")
         .json(&xbl_request)
         .send()
-        .await?;
+        .await
+        .context("Failed to send request to Xbox Live authentication endpoint")?;
     
-    if !response.status().is_success() {
-        let error_text = response.text().await?;
-        return Err(anyhow::anyhow!("Xbox Live authentication failed: {}", error_text));
+    let status = response.status();
+    debug!("Received response from Xbox Live with status: {}", status);
+    
+    if !status.is_success() {
+        let error_text = response.text().await.unwrap_or_else(|e| {
+            error!("Failed to read error response body: {}", e);
+            "Unknown error".to_string()
+        });
+        error!("Xbox Live authentication failed with status {}: {}", status, error_text);
+        return Err(anyhow::anyhow!("Xbox Live authentication failed: {} - {}", status, error_text));
     }
     
-    let xbl_response: XboxLiveResponse = response.json().await?;
-    let user_hash = xbl_response.display_claims.xui.get(0)
-        .ok_or_else(|| anyhow::anyhow!("No Xbox User Hash found"))?
-        .uhs.clone();
+    let xbl_response: XboxLiveResponse = response.json().await
+        .context("Failed to parse Xbox Live response as JSON")?;
+    
+    let user_hash = match xbl_response.display_claims.xui.get(0) {
+        Some(info) => info.uhs.clone(),
+        None => {
+            error!("No Xbox User Hash found in response");
+            return Err(anyhow::anyhow!("No Xbox User Hash found in response"));
+        }
+    };
+    
+    debug!("Successfully retrieved Xbox Live token and user hash");
+    trace!("User hash: {}, Token length: {}", user_hash, xbl_response.token.len());
     
     Ok((xbl_response.token, user_hash))
 }
@@ -270,19 +318,44 @@ async fn get_xsts_token(xbl_token: &str) -> Result<String> {
         token_type: "JWT".to_string(),
     };
     
-    println!("Getting XSTS token...");
+    debug!("Sending XSTS authentication request to: {}", XSTS_AUTH_URL);
     let response = client.post(XSTS_AUTH_URL)
         .header(CONTENT_TYPE, "application/json")
         .json(&xsts_request)
         .send()
-        .await?;
+        .await
+        .context("Failed to send request to XSTS authentication endpoint")?;
     
-    if !response.status().is_success() {
-        let error_text = response.text().await?;
-        return Err(anyhow::anyhow!("XSTS authentication failed: {}", error_text));
+    let status = response.status();
+    debug!("Received response from XSTS with status: {}", status);
+    
+    if !status.is_success() {
+        let error_text = response.text().await.unwrap_or_else(|e| {
+            error!("Failed to read error response body: {}", e);
+            "Unknown error".to_string()
+        });
+        
+        // Special handling for common error codes
+        if status.as_u16() == 401 {
+            if error_text.contains("2148916233") {
+                error!("XSTS authentication failed: Account belongs to a child (under 18) and requires adult approval");
+                return Err(anyhow::anyhow!("Xbox Live account belongs to a child (under 18) and requires adult approval"));
+            } else if error_text.contains("2148916238") {
+                error!("XSTS authentication failed: Account is from a country/region where Xbox Live is not available");
+                return Err(anyhow::anyhow!("Xbox Live is not available in your country/region"));
+            }
+        }
+        
+        error!("XSTS authentication failed with status {}: {}", status, error_text);
+        return Err(anyhow::anyhow!("XSTS authentication failed: {} - {}", status, error_text));
     }
     
-    let xsts_response: XboxLiveResponse = response.json().await?;
+    let xsts_response: XboxLiveResponse = response.json().await
+        .context("Failed to parse XSTS response as JSON")?;
+    
+    debug!("Successfully retrieved XSTS token");
+    trace!("XSTS token length: {}", xsts_response.token.len());
+    
     Ok(xsts_response.token)
 }
 
@@ -297,19 +370,32 @@ async fn get_minecraft_token(xsts_token: &str, user_hash: &str) -> Result<String
         identity_token,
     };
     
-    println!("Authenticating with Minecraft services...");
+    debug!("Sending authentication request to Minecraft services: {}", MINECRAFT_AUTH_URL);
     let response = client.post(MINECRAFT_AUTH_URL)
         .header(CONTENT_TYPE, "application/json")
         .json(&minecraft_request)
         .send()
-        .await?;
+        .await
+        .context("Failed to send request to Minecraft authentication endpoint")?;
     
-    if !response.status().is_success() {
-        let error_text = response.text().await?;
-        return Err(anyhow::anyhow!("Minecraft authentication failed: {}", error_text));
+    let status = response.status();
+    debug!("Received response from Minecraft with status: {}", status);
+    
+    if !status.is_success() {
+        let error_text = response.text().await.unwrap_or_else(|e| {
+            error!("Failed to read error response body: {}", e);
+            "Unknown error".to_string()
+        });
+        error!("Minecraft authentication failed with status {}: {}", status, error_text);
+        return Err(anyhow::anyhow!("Minecraft authentication failed: {} - {}", status, error_text));
     }
     
-    let minecraft_response: MinecraftAuthResponse = response.json().await?;
+    let minecraft_response: MinecraftAuthResponse = response.json().await
+        .context("Failed to parse Minecraft authentication response as JSON")?;
+    
+    debug!("Successfully retrieved Minecraft token with expiration in {} seconds", minecraft_response.expires_in);
+    trace!("Minecraft token length: {}", minecraft_response.access_token.len());
+    
     Ok(minecraft_response.access_token)
 }
 
@@ -317,25 +403,34 @@ async fn get_minecraft_token(xsts_token: &str, user_hash: &str) -> Result<String
 async fn verify_game_ownership(minecraft_token: &str) -> Result<()> {
     let client = reqwest::Client::new();
     
-    println!("Verifying game ownership...");
+    debug!("Verifying game ownership at: {}", MINECRAFT_ENTITLEMENT_URL);
     let response = client.get(MINECRAFT_ENTITLEMENT_URL)
         .header(AUTHORIZATION, format!("Bearer {}", minecraft_token))
         .send()
-        .await?;
+        .await
+        .context("Failed to send request to Minecraft entitlement endpoint")?;
     
-    if !response.status().is_success() {
-        let error_text = response.text().await?;
-        return Err(anyhow::anyhow!("Failed to verify game ownership: {}", error_text));
+    let status = response.status();
+    debug!("Received response from Minecraft entitlement check with status: {}", status);
+    
+    if !status.is_success() {
+        let error_text = response.text().await.unwrap_or_else(|e| {
+            error!("Failed to read error response body: {}", e);
+            "Unknown error".to_string()
+        });
+        error!("Failed to verify game ownership with status {}: {}", status, error_text);
+        return Err(anyhow::anyhow!("Failed to verify game ownership: {} - {}", status, error_text));
     }
     
-    // For debugging, print the raw JSON response
-    let body = response.text().await?;
-    println!("Got entitlements response: {}", body);
+    // For debugging, get the raw JSON response
+    let body = response.text().await
+        .context("Failed to read entitlement response body")?;
+    debug!("Got entitlements response: {}", body);
     
     // If the response is empty or doesn't contain items, assume the user has the game
     // This is a workaround for differences in the API response format
     if body.trim().is_empty() || !body.contains("items") {
-        println!("No explicit entitlements found, assuming ownership is valid");
+        warn!("No explicit entitlements found, assuming ownership is valid");
         return Ok(());
     }
     
@@ -350,13 +445,17 @@ async fn verify_game_ownership(minecraft_token: &str) -> Result<()> {
             );
             
             if !has_game {
-                println!("Warning: No Minecraft entitlement found, but proceeding anyway");
+                warn!("No Minecraft entitlement found in response: {:?}", entitlements);
+                warn!("Warning: No Minecraft entitlement found, but proceeding anyway");
+            } else {
+                debug!("Found valid Minecraft entitlement");
             }
             
             Ok(())
         },
         Err(e) => {
-            println!("Warning: Couldn't parse entitlement data: {}. Proceeding anyway", e);
+            warn!("Couldn't parse entitlement data: {}. Response: {}", e, body);
+            warn!("Warning: Couldn't parse entitlement data, proceeding anyway");
             // Continue anyway - we'll assume the user has the game
             Ok(())
         }
@@ -367,17 +466,33 @@ async fn verify_game_ownership(minecraft_token: &str) -> Result<()> {
 async fn get_player_profile(minecraft_token: &str) -> Result<MinecraftProfile> {
     let client = reqwest::Client::new();
     
-    println!("Retrieving Minecraft profile...");
+    debug!("Retrieving Minecraft profile from: {}", MINECRAFT_PROFILE_URL);
     let response = client.get(MINECRAFT_PROFILE_URL)
         .header(AUTHORIZATION, format!("Bearer {}", minecraft_token))
         .send()
-        .await?;
+        .await
+        .context("Failed to send request to Minecraft profile endpoint")?;
     
-    if !response.status().is_success() {
-        let error_text = response.text().await?;
-        return Err(anyhow::anyhow!("Failed to get Minecraft profile: {}", error_text));
+    let status = response.status();
+    debug!("Received response from Minecraft profile endpoint with status: {}", status);
+    
+    if !status.is_success() {
+        let error_text = response.text().await.unwrap_or_else(|e| {
+            error!("Failed to read error response body: {}", e);
+            "Unknown error".to_string()
+        });
+        error!("Failed to get Minecraft profile with status {}: {}", status, error_text);
+        return Err(anyhow::anyhow!("Failed to get Minecraft profile: {} - {}", status, error_text));
     }
     
-    let profile: MinecraftProfile = response.json().await?;
+    let profile: MinecraftProfile = response.json().await
+        .context("Failed to parse Minecraft profile response as JSON")?;
+    
+    debug!("Successfully retrieved Minecraft profile for player: {} ({})", profile.name, profile.id);
+    trace!("Profile has {} skins and {} capes", 
+        profile.skins.as_ref().map_or(0, |s| s.len()),
+        profile.capes.as_ref().map_or(0, |c| c.len())
+    );
+    
     Ok(profile)
 }
