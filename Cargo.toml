@@ -19,3 +19,5 @@ uuid = { version = "1.4", features = ["v4", "serde"] }
 log = "0.4"
 env_logger = "0.10"
 time = { version = "0.3", features = ["formatting", "macros", "local-offset"] }
+# Local server for OAuth redirect
+tiny_http = "0.12"

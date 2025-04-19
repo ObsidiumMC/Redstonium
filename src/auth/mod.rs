@@ -1,4 +1,4 @@
-use anyhow::{Result, Context};
+use anyhow::{Result, Context, anyhow};
 use log::{debug, info, warn, error, trace};
 use oauth2::{
     AuthUrl, ClientId, RedirectUrl, TokenUrl,
@@ -6,12 +6,18 @@ use oauth2::{
 };
 use reqwest::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
-use std::io::stdin;
+use std::net::SocketAddr;
+use tiny_http::{Server, Response};
+use tokio::sync::oneshot;
+use tokio::task;
+use url::Url;
+use std::env; // Import env module
 
 // Microsoft OAuth2 constants - updated to use the correct endpoints
 const MS_AUTH_URL: &str = "https://login.live.com/oauth20_authorize.srf";
 const MS_TOKEN_URL: &str = "https://login.live.com/oauth20_token.srf";
-const REDIRECT_URI: &str = "https://login.live.com/oauth20_desktop.srf";
+// Use a local redirect URI
+const REDIRECT_URI: &str = "http://localhost:8080"; // Make sure this matches the Azure App Registration
 
 // Xbox Live constants
 const XBL_AUTH_URL: &str = "https://user.auth.xboxlive.com/user/authenticate";
@@ -149,7 +155,7 @@ pub async fn authenticate() -> Result<AuthResult> {
     // Step 1: Get Microsoft OAuth token
     info!("Starting Microsoft OAuth authentication process");
     debug!("Using Microsoft OAuth endpoints: Auth URL: {}, Token URL: {}", MS_AUTH_URL, MS_TOKEN_URL);
-    let ms_token = get_microsoft_token("00000000402b5328")
+    let ms_token = get_microsoft_token()
         .await
         .context("Failed to get Microsoft OAuth token")?;
     info!("✓ Microsoft authentication successful");
@@ -197,57 +203,125 @@ pub async fn authenticate() -> Result<AuthResult> {
     })
 }
 
-/// Get a Microsoft OAuth token using the device code flow
-async fn get_microsoft_token(client_id: &str) -> Result<String> {
-    debug!("Creating OAuth client with client ID: {}", client_id);
+/// Get a Microsoft OAuth token using the authorization code flow with a local server
+async fn get_microsoft_token() -> Result<String> {
+    let client_id = env::var("MS_CLIENT_ID")
+        .context("MS_CLIENT_ID environment variable not set. Make sure .env file is present and loaded.")?;
     
+    debug!("Creating OAuth client with client ID: {}", client_id);
+
+    let redirect_url = RedirectUrl::new(REDIRECT_URI.to_string())
+        .context("Invalid redirect URI")?;
+
     let oauth_client = BasicClient::new(
-        ClientId::new(client_id.to_string()),
+        ClientId::new(client_id),
         None, // No client secret for public clients
         AuthUrl::new(MS_AUTH_URL.to_string()).context("Invalid Microsoft Auth URL")?,
         Some(TokenUrl::new(MS_TOKEN_URL.to_string()).context("Invalid Microsoft Token URL")?)
     )
-    .set_redirect_uri(RedirectUrl::new(REDIRECT_URI.to_string()).context("Invalid redirect URI")?);
-    
+    .set_redirect_uri(redirect_url.clone());
+
     // Generate the authorization URL
-    debug!("Generating authorization URL with scopes: XboxLive.signin, offline_access");
+    debug!("Generating authorization URL with scopes: XboxLive.signin, offline_access and prompt=login");
     let (auth_url, _csrf_token) = oauth_client
         .authorize_url(CsrfToken::new_random)
         .add_scope(Scope::new("XboxLive.signin".to_string()))
         .add_scope(Scope::new("offline_access".to_string()))
+        // Add the prompt=login parameter to force user interaction
+        // .add_extra_param("prompt", "login") 
         .url();
-    
+
+    // Channel to receive the authorization code from the local server
+    let (tx, rx) = oneshot::channel::<Result<String>>();
+
+    // Start the local server in a blocking thread
+    let server_handle = task::spawn_blocking(move || {
+        let addr: SocketAddr = "127.0.0.1:8080".parse().expect("Failed to parse address");
+        let server = match Server::http(addr) {
+            Ok(s) => s,
+            Err(e) => {
+                error!("Failed to start local HTTP server: {}", e);
+                let _ = tx.send(Err(anyhow!("Failed to start local HTTP server on {}: {}", addr, e)));
+                return;
+            }
+        };
+        info!("Local server listening on {}", addr);
+        info!("Waiting for redirect from Microsoft...");
+
+        match server.recv() {
+            Ok(rq) => {
+                let url_str = format!("http://localhost:8080{}", rq.url());
+                debug!("Received request: {}", url_str);
+
+                let response_text;
+                if let Ok(url) = Url::parse(&url_str) {
+                    let code = url.query_pairs().find(|(key, _)| key == "code").map(|(_, value)| value.into_owned());
+                    let error = url.query_pairs().find(|(key, _)| key == "error").map(|(_, value)| value.into_owned());
+                    let error_description = url.query_pairs().find(|(key, _)| key == "error_description").map(|(_, value)| value.into_owned());
+
+                    if let Some(code) = code {
+                        debug!("Received authorization code.");
+                        response_text = "Authentication successful! You can close this window.".to_string();
+                        let _ = tx.send(Ok(code));
+                    } else if let Some(error) = error {
+                        let description = error_description.unwrap_or_else(|| "No description provided.".to_string());
+                        error!("OAuth error received: {} - {}", error, description);
+                        response_text = format!("Authentication failed: {} - {}. Please close this window.", error, description);
+                        let _ = tx.send(Err(anyhow!("OAuth error: {} - {}", error, description)));
+                    } else {
+                        warn!("Received request without 'code' or 'error' parameter.");
+                        response_text = "Received unexpected request. Please close this window.".to_string();
+                        let _ = tx.send(Err(anyhow!("Invalid redirect request received")));
+                    }
+                } else {
+                    error!("Failed to parse redirect URL: {}", url_str);
+                    response_text = "Error processing request. Please close this window.".to_string();
+                    let _ = tx.send(Err(anyhow!("Failed to parse redirect URL")));
+                }
+
+                let response = Response::from_string(response_text).with_status_code(200);
+                if let Err(e) = rq.respond(response) {
+                    error!("Failed to send response to browser: {}", e);
+                }
+                debug!("Local server responded and is shutting down.");
+            },
+            Err(e) => {
+                error!("Local server failed to receive request: {}", e);
+                let _ = tx.send(Err(anyhow!("Local server error: {}", e)));
+            }
+        }
+        // Server automatically stops after handling one request
+    });
+
     // Open the browser for the user to log in
     info!("Opening browser for Microsoft authentication...");
     webbrowser::open(auth_url.as_str()).context("Failed to open web browser for authentication")?;
-    
-    // After redirect, user will see the authorization code
-    info!("Please complete the login in your browser.");
-    info!("After login, you'll be redirected to a page. Look for a URL parameter that says 'code='");
-    info!("Please copy ONLY the code part (after 'code=' and before any '&' character if present) and paste it here:");
-    
-    let mut code = String::new();
-    stdin().read_line(&mut code).context("Failed to read authorization code from stdin")?;
-    code = code.trim().to_string();
-    
+    info!("Please complete the login in your browser. Waiting for authorization code...");
+
+    // Wait for the server thread to send the code
+    let code = rx.await.context("Authentication process cancelled or failed")??;
+
+    // Ensure the server task finished
+    server_handle.await.context("Server task panicked")?;
+
     if code.is_empty() {
-        error!("No authorization code provided");
-        return Err(anyhow::anyhow!("No authorization code provided"));
+        error!("Received empty authorization code");
+        return Err(anyhow::anyhow!("Received empty authorization code"));
     }
-    
+
     info!("Exchanging authorization code for access token...");
     debug!("Authorization code length: {}", code.len());
-    
+
     // Exchange authorization code for access token
     let token_result = oauth_client
         .exchange_code(AuthorizationCode::new(code))
         .request_async(oauth2::reqwest::async_http_client)
         .await
         .context("Failed to exchange authorization code for token")?;
-    
+
     debug!("Successfully received access token");
     trace!("Access token length: {}", token_result.access_token().secret().len());
-    
+
     Ok(token_result.access_token().secret().clone())
 }
 
@@ -373,6 +447,7 @@ async fn get_minecraft_token(xsts_token: &str, user_hash: &str) -> Result<String
     debug!("Sending authentication request to Minecraft services: {}", MINECRAFT_AUTH_URL);
     let response = client.post(MINECRAFT_AUTH_URL)
         .header(CONTENT_TYPE, "application/json")
+        .header(ACCEPT, "application/json") // Explicitly add Accept header
         .json(&minecraft_request)
         .send()
         .await

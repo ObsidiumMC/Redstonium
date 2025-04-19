@@ -4,11 +4,15 @@ use env_logger::{Builder, Env};
 use log::{info, error, LevelFilter};
 use std::io::Write;
 use time::{format_description::FormatItem, macros::format_description};
+use dotenv::dotenv; // Import dotenv
 
 const LOG_FORMAT: &[FormatItem] = format_description!("[year]-[month]-[day] [hour]:[minute]:[second]");
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Load environment variables from .env file
+    dotenv().ok(); 
+
     // Initialize the logger with custom format
     setup_logger()?;
 
