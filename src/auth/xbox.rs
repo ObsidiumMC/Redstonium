@@ -1,14 +1,13 @@
-use anyhow::{Result, Context, anyhow};
-use log::{debug, info, warn, error, trace};
+use anyhow::{Result, Context};
+use log::{debug, error, trace};
 use reqwest::header::{ACCEPT, CONTENT_TYPE};
+use reqwest::Client;
 
 use super::constants::{XBL_AUTH_URL, XSTS_AUTH_URL};
 use super::models::{XboxLiveRequest, XboxLiveProperties, XboxLiveResponse, XstsRequest, XstsProperties};
 
 /// Get Xbox Live token using the Microsoft access token
-pub async fn get_xbox_live_token(ms_token: &str) -> Result<(String, String)> {
-    let client = reqwest::Client::new();
-    
+pub async fn get_xbox_live_token(client: &Client, ms_token: &str) -> Result<(String, String)> {
     // Build the Xbox Live authentication request
     let xbl_request = XboxLiveRequest {
         properties: XboxLiveProperties {
@@ -59,9 +58,7 @@ pub async fn get_xbox_live_token(ms_token: &str) -> Result<(String, String)> {
 }
 
 /// Get XSTS token using the Xbox Live token
-pub async fn get_xsts_token(xbl_token: &str) -> Result<String> {
-    let client = reqwest::Client::new();
-    
+pub async fn get_xsts_token(client: &Client, xbl_token: &str) -> Result<String> {
     // Build the XSTS authentication request
     let xsts_request = XstsRequest {
         properties: XstsProperties {

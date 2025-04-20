@@ -1,14 +1,13 @@
-use anyhow::{Result, Context, anyhow};
-use log::{debug, info, warn, error, trace};
+use anyhow::{Result, Context};
+use log::{debug, warn, error, trace};
 use reqwest::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE};
+use reqwest::Client;
 
 use super::constants::{MINECRAFT_AUTH_URL, MINECRAFT_PROFILE_URL, MINECRAFT_ENTITLEMENT_URL};
 use super::models::{MinecraftAuthRequest, MinecraftAuthResponse, EntitlementResponse, MinecraftProfile};
 
 /// Get Minecraft access token using XSTS token and user hash
-pub async fn get_minecraft_token(xsts_token: &str, user_hash: &str) -> Result<String> {
-    let client = reqwest::Client::new();
-    
+pub async fn get_minecraft_token(client: &Client, xsts_token: &str, user_hash: &str) -> Result<String> {
     // Format the Xbox Live identity token for Minecraft
     let identity_token = format!("XBL3.0 x={};{}", user_hash, xsts_token);
     
@@ -47,9 +46,7 @@ pub async fn get_minecraft_token(xsts_token: &str, user_hash: &str) -> Result<St
 }
 
 /// Verify that the user owns Minecraft
-pub async fn verify_game_ownership(minecraft_token: &str) -> Result<()> {
-    let client = reqwest::Client::new();
-    
+pub async fn verify_game_ownership(client: &Client, minecraft_token: &str) -> Result<()> {
     debug!("Verifying game ownership at: {}", MINECRAFT_ENTITLEMENT_URL);
     let response = client.get(MINECRAFT_ENTITLEMENT_URL)
         .header(AUTHORIZATION, format!("Bearer {}", minecraft_token))
@@ -110,9 +107,7 @@ pub async fn verify_game_ownership(minecraft_token: &str) -> Result<()> {
 }
 
 /// Get the player's Minecraft profile
-pub async fn get_player_profile(minecraft_token: &str) -> Result<MinecraftProfile> {
-    let client = reqwest::Client::new();
-    
+pub async fn get_player_profile(client: &Client, minecraft_token: &str) -> Result<MinecraftProfile> {
     debug!("Retrieving Minecraft profile from: {}", MINECRAFT_PROFILE_URL);
     let response = client.get(MINECRAFT_PROFILE_URL)
         .header(AUTHORIZATION, format!("Bearer {}", minecraft_token))
