@@ -6,7 +6,7 @@ use std::io::Write;
 use time::{format_description::FormatItem, macros::format_description};
 use dotenv::dotenv; // Import dotenv
 
-const LOG_FORMAT: &[FormatItem] = format_description!("[year]-[month]-[day] [hour]:[minute]:[second]");
+const LOG_FORMAT: &[FormatItem] = format_description!("[year]-[month]-[day] [hour]:[minute]:[second].[subsecond digits:3]");
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -17,7 +17,7 @@ async fn main() -> anyhow::Result<()> {
     setup_logger()?;
 
     info!("Rustified Minecraft Launcher");
-    info!("---------------------------");
+    info!("----------------------------");
     
     // Initialize the authentication process
     info!("Starting authentication process...");
