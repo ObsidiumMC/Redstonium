@@ -1,0 +1,46 @@
+#!/bin/bash
+# Pre-commit hook for code formatting and quality checks
+# Place this in .git/hooks/pre-commit and make it executable
+
+echo "🎨 Formatting code automatically..."
+
+# Auto-format all Rust code
+if ! cargo fmt --all; then
+    echo "❌ Failed to format code!"
+    exit 1
+fi
+
+# Stage any formatting changes
+git add -A
+
+echo "🔍 Checking code quality and dead code..."
+
+# Run cargo check (lint configuration in Cargo.toml automatically applies dead code checks)
+if ! cargo check --all-targets --quiet; then
+    echo ""
+    echo "❌ Commit rejected: Code quality issues detected!"
+    echo ""
+    echo "Our project has a strict no-dead-code policy."
+    echo "Please remove all unused code before committing."
+    echo ""
+    echo "To check for issues manually:"
+    echo "  cargo check --all-targets"
+    echo "  cargo clippy --all-targets --all-features"
+    echo ""
+    echo "See CONTRIBUTING.md for more information."
+    exit 1
+fi
+
+# Run clippy (lint configuration in Cargo.toml automatically applies all quality checks)
+if ! cargo clippy --all-targets --all-features --quiet; then
+    echo ""
+    echo "❌ Commit rejected: Clippy found code quality issues!"
+    echo ""
+    echo "Please fix all clippy warnings and dead code."
+    echo "Run: cargo clippy --all-targets --all-features"
+    echo ""
+    echo "See CONTRIBUTING.md for our code quality policy."
+    exit 1
+fi
+
+echo "✅ No dead code detected - commit allowed!"

@@ -9,6 +9,8 @@ pub const XBL_AUTH_URL: &str = "https://user.auth.xboxlive.com/user/authenticate
 pub const XSTS_AUTH_URL: &str = "https://xsts.auth.xboxlive.com/xsts/authorize";
 
 // Minecraft API constants
-pub const MINECRAFT_AUTH_URL: &str = "https://api.minecraftservices.com/authentication/login_with_xbox";
+pub const MINECRAFT_AUTH_URL: &str =
+    "https://api.minecraftservices.com/authentication/login_with_xbox";
 pub const MINECRAFT_PROFILE_URL: &str = "https://api.minecraftservices.com/minecraft/profile";
-pub const MINECRAFT_ENTITLEMENT_URL: &str = "https://api.minecraftservices.com/entitlements/mcstore";
+pub const MINECRAFT_ENTITLEMENT_URL: &str =
+    "https://api.minecraftservices.com/entitlements/mcstore";

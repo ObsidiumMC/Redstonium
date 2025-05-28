@@ -1,44 +1,47 @@
-use anyhow::{Result, Context, anyhow};
-use log::{debug, info, warn, error, trace};
+use anyhow::{Context, Result, anyhow};
+use log::{debug, error, info, trace, warn};
 use oauth2::{
-    AuthUrl, ClientId, RedirectUrl, TokenUrl,
-    basic::BasicClient, AuthorizationCode, CsrfToken, Scope, TokenResponse,
+    AuthUrl, AuthorizationCode, ClientId, CsrfToken, RedirectUrl, Scope, TokenResponse, TokenUrl,
+    basic::BasicClient,
 };
+use std::env;
 use std::net::SocketAddr;
-use tiny_http::{Server, Response};
+use tiny_http::{Response, Server};
 use tokio::sync::oneshot;
 use tokio::task;
 use url::Url;
-use std::env;
 
 use super::constants::{MS_AUTH_URL, MS_TOKEN_URL, REDIRECT_URI};
 
 /// Get a Microsoft OAuth token using the authorization code flow with a local server
 pub async fn get_microsoft_token() -> Result<String> {
-    let client_id = env::var("MS_CLIENT_ID")
-        .context("MS_CLIENT_ID environment variable not set. Make sure .env file is present and loaded.")?;
-    
+    let client_id = env::var("MS_CLIENT_ID").context(
+        "MS_CLIENT_ID environment variable not set. Make sure .env file is present and loaded.",
+    )?;
+
     debug!("Creating OAuth client with client ID: {}", client_id);
 
-    let redirect_url = RedirectUrl::new(REDIRECT_URI.to_string())
-        .context("Invalid redirect URI")?;
+    let redirect_url =
+        RedirectUrl::new(REDIRECT_URI.to_string()).context("Invalid redirect URI")?;
 
     let oauth_client = BasicClient::new(
         ClientId::new(client_id),
         None, // No client secret for public clients
         AuthUrl::new(MS_AUTH_URL.to_string()).context("Invalid Microsoft Auth URL")?,
-        Some(TokenUrl::new(MS_TOKEN_URL.to_string()).context("Invalid Microsoft Token URL")?)
+        Some(TokenUrl::new(MS_TOKEN_URL.to_string()).context("Invalid Microsoft Token URL")?),
     )
     .set_redirect_uri(redirect_url.clone());
 
     // Generate the authorization URL
-    debug!("Generating authorization URL with scopes: XboxLive.signin, offline_access and prompt=login");
+    debug!(
+        "Generating authorization URL with scopes: XboxLive.signin, offline_access and prompt=login"
+    );
     let (auth_url, _csrf_token) = oauth_client
         .authorize_url(CsrfToken::new_random)
         .add_scope(Scope::new("XboxLive.signin".to_string()))
         .add_scope(Scope::new("offline_access".to_string()))
         // Add the prompt=login parameter to force user interaction
-        // .add_extra_param("prompt", "login") 
+        // .add_extra_param("prompt", "login")
         .url();
 
     // Channel to receive the authorization code from the local server
@@ -51,7 +54,11 @@ pub async fn get_microsoft_token() -> Result<String> {
             Ok(s) => s,
             Err(e) => {
                 error!("Failed to start local HTTP server: {}", e);
-                let _ = tx.send(Err(anyhow!("Failed to start local HTTP server on {}: {}", addr, e)));
+                let _ = tx.send(Err(anyhow!(
+                    "Failed to start local HTTP server on {}: {}",
+                    addr,
+                    e
+                )));
                 return;
             }
         };
@@ -65,27 +72,43 @@ pub async fn get_microsoft_token() -> Result<String> {
 
                 let response_text;
                 if let Ok(url) = Url::parse(&url_str) {
-                    let code = url.query_pairs().find(|(key, _)| key == "code").map(|(_, value)| value.into_owned());
-                    let error = url.query_pairs().find(|(key, _)| key == "error").map(|(_, value)| value.into_owned());
-                    let error_description = url.query_pairs().find(|(key, _)| key == "error_description").map(|(_, value)| value.into_owned());
+                    let code = url
+                        .query_pairs()
+                        .find(|(key, _)| key == "code")
+                        .map(|(_, value)| value.into_owned());
+                    let error = url
+                        .query_pairs()
+                        .find(|(key, _)| key == "error")
+                        .map(|(_, value)| value.into_owned());
+                    let error_description = url
+                        .query_pairs()
+                        .find(|(key, _)| key == "error_description")
+                        .map(|(_, value)| value.into_owned());
 
                     if let Some(code) = code {
                         debug!("Received authorization code.");
-                        response_text = "Authentication successful! You can close this window.".to_string();
+                        response_text =
+                            "Authentication successful! You can close this window.".to_string();
                         let _ = tx.send(Ok(code));
                     } else if let Some(error) = error {
-                        let description = error_description.unwrap_or_else(|| "No description provided.".to_string());
+                        let description = error_description
+                            .unwrap_or_else(|| "No description provided.".to_string());
                         error!("OAuth error received: {} - {}", error, description);
-                        response_text = format!("Authentication failed: {} - {}. Please close this window.", error, description);
+                        response_text = format!(
+                            "Authentication failed: {} - {}. Please close this window.",
+                            error, description
+                        );
                         let _ = tx.send(Err(anyhow!("OAuth error: {} - {}", error, description)));
                     } else {
                         warn!("Received request without 'code' or 'error' parameter.");
-                        response_text = "Received unexpected request. Please close this window.".to_string();
+                        response_text =
+                            "Received unexpected request. Please close this window.".to_string();
                         let _ = tx.send(Err(anyhow!("Invalid redirect request received")));
                     }
                 } else {
                     error!("Failed to parse redirect URL: {}", url_str);
-                    response_text = "Error processing request. Please close this window.".to_string();
+                    response_text =
+                        "Error processing request. Please close this window.".to_string();
                     let _ = tx.send(Err(anyhow!("Failed to parse redirect URL")));
                 }
 
@@ -94,7 +117,7 @@ pub async fn get_microsoft_token() -> Result<String> {
                     error!("Failed to send response to browser: {}", e);
                 }
                 debug!("Local server responded and is shutting down.");
-            },
+            }
             Err(e) => {
                 error!("Local server failed to receive request: {}", e);
                 let _ = tx.send(Err(anyhow!("Local server error: {}", e)));
@@ -109,7 +132,9 @@ pub async fn get_microsoft_token() -> Result<String> {
     info!("Please complete the login in your browser. Waiting for authorization code...");
 
     // Wait for the server thread to send the code
-    let code = rx.await.context("Authentication process cancelled or failed")??;
+    let code = rx
+        .await
+        .context("Authentication process cancelled or failed")??;
 
     // Ensure the server task finished
     server_handle.await.context("Server task panicked")?;
@@ -130,7 +155,10 @@ pub async fn get_microsoft_token() -> Result<String> {
         .context("Failed to exchange authorization code for token")?;
 
     debug!("Successfully received access token");
-    trace!("Access token length: {}", token_result.access_token().secret().len());
+    trace!(
+        "Access token length: {}",
+        token_result.access_token().secret().len()
+    );
 
     Ok(token_result.access_token().secret().clone())
 }

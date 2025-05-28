@@ -1,0 +1,125 @@
+name: Update Changelog
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-changelog:
+    name: Update Changelog
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install conventional-changelog-cli
+        run: npm install -g conventional-changelog-cli
+
+      - name: Generate CHANGELOG.md
+        run: |
+          # Create the header for the changelog
+          cat > CHANGELOG.md << 'EOF'
+          # Changelog
+
+          All notable changes to this project will be documented in this file.
+
+          The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+          and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+          EOF
+          
+          # Generate changelog from conventional commits
+          conventional-changelog -p angular -i CHANGELOG.md -s -r 0
+
+      - name: Format changelog with proper sections
+        run: |
+          # Create a temporary file to store the formatted changelog
+          cat > format_changelog.js << 'EOF'
+          const fs = require('fs');
+          
+          let changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
+          
+          // Replace conventional changelog format with Keep a Changelog format
+          changelog = changelog
+            // Replace ### Features with ### Added
+            .replace(/### Features/g, '### Added')
+            // Replace ### Bug Fixes with ### Fixed
+            .replace(/### Bug Fixes/g, '### Fixed')
+            // Replace ### Performance Improvements with ### Changed
+            .replace(/### Performance Improvements/g, '### Changed')
+            // Replace ### Documentation with ### Changed
+            .replace(/### Documentation/g, '### Changed')
+            // Replace ### Code Refactoring with ### Changed
+            .replace(/### Code Refactoring/g, '### Changed')
+            // Replace ### Tests with ### Added
+            .replace(/### Tests/g, '### Added')
+            // Replace ### Build System with ### Changed
+            .replace(/### Build System/g, '### Changed')
+            // Replace ### Continuous Integration with ### Changed
+            .replace(/### Continuous Integration/g, '### Changed')
+            // Replace ### Chores with ### Changed
+            .replace(/### Chores/g, '### Changed')
+            // Replace ### Reverts with ### Fixed
+            .replace(/### Reverts/g, '### Fixed')
+            // Clean up commit hashes and references
+            .replace(/\s+\([a-f0-9]{7,}\)/g, '')
+            .replace(/\s*\(#\d+\)/g, '')
+            // Fix bullet points
+            .replace(/^\* /gm, '- ');
+          
+          fs.writeFileSync('CHANGELOG.md', changelog);
+          EOF
+          
+          node format_changelog.js
+
+      - name: Add current version entry if tagged
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          CURRENT_DATE=$(date +'%Y-%m-%d')
+          
+          # Update the unreleased section with the current version
+          sed -i "s/## \[Unreleased\]/## [$VERSION] - $CURRENT_DATE/" CHANGELOG.md
+
+      - name: Commit changelog if changed
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          if ! git diff --exit-code CHANGELOG.md; then
+            git add CHANGELOG.md
+            git commit -m "docs: update CHANGELOG.md [skip ci]"
+            git push
+          fi
+
+  release-drafter:
+    name: Release Drafter
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      
+    steps:
+      - uses: release-drafter/release-drafter@v5
+        with:
+          config-name: release-drafter.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

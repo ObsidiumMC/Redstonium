@@ -8,7 +8,7 @@ pub struct AuthResult {
 }
 
 /// Represents a Minecraft player profile
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct MinecraftProfile {
     pub id: String,
     pub name: String,
@@ -16,7 +16,7 @@ pub struct MinecraftProfile {
     pub capes: Option<Vec<Cape>>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Skin {
     pub id: String,
     pub state: String,
@@ -24,7 +24,7 @@ pub struct Skin {
     pub variant: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Cape {
     pub id: String,
     pub state: String,
@@ -109,15 +109,9 @@ pub struct MinecraftAuthResponse {
 #[derive(Deserialize, Debug)]
 pub struct EntitlementResponse {
     pub items: Vec<Entitlement>,
-    // signature field might be optional or named differently
-    #[serde(default, rename = "signature")]
-    pub signature: String,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct Entitlement {
     pub name: String,
-    // Make signedDate optional as it might not be present
-    #[serde(rename = "signedDate", default)]
-    pub signed_date: String,
 }

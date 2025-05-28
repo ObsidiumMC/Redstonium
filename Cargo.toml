@@ -2,6 +2,46 @@
 name = "rustified"
 version = "0.1.0"
 edition = "2024"
+authors = ["OmarAfet"]
+description = "A fast and modern Minecraft launcher built with Rust"
+readme = "README.md"
+homepage = "https://github.com/OmarAfet/rustified"
+repository = "https://github.com/OmarAfet/rustified"
+license = "MIT"
+keywords = ["minecraft", "launcher", "gaming", "mojang"]
+categories = ["games", "command-line-utilities"]
+exclude = [
+    "target/",
+    ".env",
+    "debug_output.log",
+    ".vscode/",
+    "*.log"
+]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+# Lint configuration - enforce strict code quality standards
+[lints.rust]
+# Dead code detection - zero tolerance policy
+dead_code = "deny"
+unused_imports = "deny"
+unused_variables = "deny"
+unused_mut = "deny"
+unused_must_use = "warn"
+
+[lints.clippy]
+# Additional clippy lints for code quality
+all = { level = "deny", priority = -1 }
+correctness = { level = "deny", priority = -1 }
+suspicious = { level = "deny", priority = -1 }
+complexity = { level = "warn", priority = -1 }
+perf = { level = "warn", priority = -1 }
+style = { level = "warn", priority = -1 }
+# Allow some clippy lints that might be too strict for development
+too_many_arguments = "allow"
+module_inception = "allow"
 
 [dependencies]
 reqwest = { version = "0.11", features = ["json"] }
@@ -18,6 +58,12 @@ uuid = { version = "1.4", features = ["v4", "serde"] }
 # Logging dependencies
 log = "0.4"
 env_logger = "0.10"
-time = { version = "0.3", features = ["formatting", "macros", "local-offset"] }
+time = { version = "0.3", features = ["formatting", "macros", "local-offset", "serde"] }
 # Local server for OAuth redirect
 tiny_http = "0.12"
+# Additional dependencies for launcher functionality
+sha1 = "0.10"
+clap = { version = "4.0", features = ["derive"] }
+zip = "0.6"
+futures-util = "0.3"
+chrono = { version = "0.4", features = ["serde"] }

@@ -1,3 +1,70 @@
-/target
+# Rust build artifacts
+/target/
+**/*.rs.bk
+*.pdb
+*.rlib
+*.so
+*.dylib
+*.dll
+
+# Cargo lock file (uncomment if this is an application)
+# Cargo.lock
+
+# Environment variables
 .env
-Cargo.lock
+.env.local
+.env.*.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+debug_output.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Application specific
+minecraft/
+instances/
+.minecraft/
+
+# Build outputs
+dist/
+build/
+
+# Package files
+*.deb
+*.rpm
+*.pkg
+*.dmg
+*.msi
+*.exe
+*.tar.gz
+*.zip
+
+# Editor backup files
+*~
+*.swp
+*.swo
+.#*
+\#*#
+
+# Rust-specific
+Cargo.lock.bak
+**/*.rs.orig
