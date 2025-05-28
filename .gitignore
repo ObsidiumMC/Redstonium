@@ -7,8 +7,8 @@
 *.dylib
 *.dll
 
-# Cargo lock file (uncomment if this is an application)
-# Cargo.lock
+# Cargo lock file
+Cargo.lock
 
 # Environment variables
 .env
