@@ -1,6 +1,6 @@
 [package]
 name = "rustified"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2024"
 authors = ["OmarAfet"]
 description = "A fast and modern Minecraft launcher built with Rust"
