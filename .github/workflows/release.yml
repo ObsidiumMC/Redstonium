@@ -81,8 +81,6 @@ jobs:
           body: |
             A fast and modern Minecraft launcher built with Rust.
 
-            ## Changes
-
             ${{ steps.changelog.outputs.changelog }}
 
             ## Downloads
