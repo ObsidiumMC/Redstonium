@@ -19,6 +19,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [0.1.4] - 2025-05-28
+
+### Added
+- Comprehensive GitHub Actions release workflow for multi-platform builds
+- Automatic release generation with Windows, macOS, and Linux binaries
+- Release notes generation from CHANGELOG.md
+- Just commands for development workflow
+
+### Changed
+- Updated release process to be fully automated
+- Improved development workflow with better tooling
+
 ## [0.1.3] - 2025-05-28
 
 ### Added
