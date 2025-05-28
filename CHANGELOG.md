@@ -19,6 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [0.1.6] - 2025-05-28
+
+### Fixed
+- Update GitHub Actions to use latest versions (actions/upload-artifact@v4, actions/cache@v4)
+- Fix release workflow errors that caused build failures
+- Simplify release body format and remove duplicate content
+- Improve release verification logic to handle partial build failures gracefully
+
 ## [0.1.5] - 2025-05-28
 
 ### Changed
