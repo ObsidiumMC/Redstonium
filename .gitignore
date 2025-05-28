@@ -65,6 +65,9 @@ build/
 .#*
 \#*#
 
+# Documentation files (excluded from version control)
+GUIDE.md
+
 # Rust-specific
 Cargo.lock.bak
 **/*.rs.orig
