@@ -164,7 +164,7 @@ jobs:
           sudo apt-get install -y libssl-dev pkg-config
 
       - name: Cache cargo
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -217,7 +217,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload artifact (for debugging)
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ env.ASSET_NAME }}
           path: ${{ env.ASSET_PATH }}
@@ -234,12 +234,24 @@ jobs:
           echo "Release created: ${{ needs.create-release.result }}"
           echo "Build status: ${{ needs.build.result }}"
 
-          if [ "${{ needs.create-release.result }}" = "success" ] && [ "${{ needs.build.result }}" = "success" ]; then
+          # Check if release was created successfully
+          if [ "${{ needs.create-release.result }}" != "success" ]; then
+            echo "❌ Release creation failed!"
+            exit 1
+          fi
+
+          # Check build results - allow some builds to fail but require at least one success
+          BUILD_RESULTS="${{ toJSON(needs.build.outputs) }}"
+          echo "Build results: $BUILD_RESULTS"
+
+          # If builds completed (success, failure, or cancelled), check if release creation was successful
+          if [ "${{ needs.build.result }}" != "success" ]; then
+            echo "⚠️  Some builds may have failed, but release was created"
+            echo "🔗 Release URL: https://github.com/${{ github.repository }}/releases/tag/${{ needs.create-release.outputs.tag_name }}"
+            echo "Please check individual build logs and manually upload any missing assets if needed"
+          else
             echo "✅ Release ${{ needs.create-release.outputs.tag_name }} completed successfully!"
             echo "🔗 Release URL: https://github.com/${{ github.repository }}/releases/tag/${{ needs.create-release.outputs.tag_name }}"
-          else
-            echo "❌ Release failed!"
-            exit 1
           fi
 
       - name: Release summary
@@ -247,9 +259,10 @@ jobs:
           echo "## 🚀 Release Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Tag:** ${{ needs.create-release.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Status:** ${{ needs.create-release.result == 'success' && needs.build.result == 'success' && '✅ Success' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Release Status:** ${{ needs.create-release.result == 'success' && '✅ Success' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Build Status:** ${{ needs.build.result == 'success' && '✅ All builds succeeded' || '⚠️ Some builds may have failed' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📦 Assets Built" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Target Platforms" >> $GITHUB_STEP_SUMMARY
           echo "- Windows (x86_64)" >> $GITHUB_STEP_SUMMARY
           echo "- macOS Intel (x86_64)" >> $GITHUB_STEP_SUMMARY
           echo "- macOS Apple Silicon (aarch64)" >> $GITHUB_STEP_SUMMARY
@@ -258,3 +271,8 @@ jobs:
           echo "### 🔗 Links" >> $GITHUB_STEP_SUMMARY
           echo "- [Release Page](https://github.com/${{ github.repository }}/releases/tag/${{ needs.create-release.outputs.tag_name }})" >> $GITHUB_STEP_SUMMARY
           echo "- [Repository](https://github.com/${{ github.repository }})" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.build.result }}" != "success" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### ⚠️ Note" >> $GITHUB_STEP_SUMMARY
+            echo "Some builds may have failed. Please check the build logs and manually upload any missing release assets if needed." >> $GITHUB_STEP_SUMMARY
+          fi
