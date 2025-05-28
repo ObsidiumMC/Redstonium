@@ -19,6 +19,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [0.1.3] - 2025-05-28
+
+### Added
+- **Multi-Platform Releases**: Automated GitHub releases for Windows, macOS (Intel & Apple Silicon), and Linux
+- **Release Automation**: Comprehensive release workflow with changelog extraction and asset generation
+- **Cross-Platform Binaries**: Built and packaged binaries for all major operating systems
+
+### Changed
+- **Release Process**: Streamlined release creation with automatic changelog integration
+- **Asset Naming**: Standardized release asset naming convention for better clarity
+
+### Fixed
+- **Release Workflow**: Complete rewrite of release automation for better reliability
+- **Cross-Compilation**: Improved build process for multiple target architectures
+
 ## [0.1.2] - 2025-05-28
 
 ### Fixed

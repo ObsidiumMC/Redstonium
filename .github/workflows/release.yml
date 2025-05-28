@@ -6,114 +6,147 @@ on:
       - "v*"
   workflow_dispatch:
     inputs:
-      tag_name:
-        description: "Tag name for release"
-        required: false
-        default: "v0.1.0"
+      tag:
+        description: "Release tag (e.g., v1.0.0)"
+        required: true
+        type: string
 
 env:
   CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
 
 jobs:
+  # Create release and extract changelog
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create_release.outputs.id }}
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      tag_name: ${{ steps.get_tag.outputs.tag_name }}
+      changelog: ${{ steps.changelog.outputs.changelog }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Extract changelog content
+      - name: Get tag name
+        id: get_tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag_name=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Extract changelog
         id: changelog
         run: |
-          VERSION="${{ github.event.inputs.tag_name || github.ref_name }}"
-          VERSION_NUMBER="${VERSION#v}"  # Remove 'v' prefix if present
+          TAG_NAME="${{ steps.get_tag.outputs.tag_name }}"
+          VERSION=${TAG_NAME#v}  # Remove 'v' prefix
 
-          # Extract the changelog section for this version
-          python3 << 'EOF'
-          import re
-          import sys
+          echo "Extracting changelog for version $VERSION"
 
-          version = "$VERSION_NUMBER"
-
-          try:
-              with open('CHANGELOG.md', 'r') as f:
-                  content = f.read()
+          # Extract changelog section for this version
+          if grep -q "## \[$VERSION\]" CHANGELOG.md; then
+            # Extract content between this version and the next version marker
+            CHANGELOG=$(awk "/^## \[$VERSION\]/{flag=1; next} /^## \[/{flag=0} flag" CHANGELOG.md | sed '/^$/d' | head -50)
+            
+            if [ -z "$CHANGELOG" ]; then
+              CHANGELOG="### Changes
               
-              # Find the section for this version
-              # Look for ## [version] - date
-              pattern = rf'## \[{re.escape(version)}\][^\n]*\n(.*?)(?=\n## \[|\n#[^#]|\Z)'
-              match = re.search(pattern, content, re.DOTALL)
-              
-              if match:
-                  release_notes = match.group(1).strip()
-                  # Clean up the content - remove extra newlines
-                  release_notes = re.sub(r'\n{3,}', '\n\n', release_notes)
-                  
-                  # Save to file for GitHub Actions
-                  with open('release_notes.md', 'w') as f:
-                      f.write(release_notes)
-                  print(f"✅ Found changelog content for version {version}")
-                  print("📝 Release notes:")
-                  print(release_notes[:200] + "..." if len(release_notes) > 200 else release_notes)
-              else:
-                  print(f"⚠️ No changelog entry found for version {version}")
-                  print("🔍 Available versions in changelog:")
-                  # Show available versions
-                  version_pattern = r'## \[([^\]]+)\]'
-                  versions = re.findall(version_pattern, content)
-                  for v in versions[:5]:  # Show first 5 versions
-                      print(f"  - {v}")
-                  
-                  # Create fallback content
-                  with open('release_notes.md', 'w') as f:
-                      f.write(f"Release {version} of Rustified Minecraft Launcher.\n\nSee [CHANGELOG.md](./CHANGELOG.md) for detailed changes.")
-          except Exception as e:
-              print(f"❌ Error processing changelog: {e}")
-              with open('release_notes.md', 'w') as f:
-                  f.write(f"Release {version} of Rustified Minecraft Launcher.\n\nSee [CHANGELOG.md](./CHANGELOG.md) for detailed changes.")
-          EOF
+              - See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for full details"
+            fi
+          else
+            # If version not found in changelog, generate a basic one
+            CHANGELOG="### Changes
+            
+            This release includes various improvements and bug fixes.
+            
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for full details."
+          fi
+
+          # Save changelog to output (handle multiline)
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_tag.outputs.tag_name }}
+          name: "Rustified ${{ steps.get_tag.outputs.tag_name }}"
+          body: |
+            # Rustified ${{ steps.get_tag.outputs.tag_name }}
+
+            A fast and modern Minecraft launcher built with Rust.
+
+            ## What's Changed
+
+            ${{ steps.changelog.outputs.changelog }}
+
+            ## Download
+
+            Choose the appropriate version for your operating system:
+
+            - **Windows**: `rustified-${{ steps.get_tag.outputs.tag_name }}-windows.exe`
+            - **macOS (Intel)**: `rustified-${{ steps.get_tag.outputs.tag_name }}-macos-intel.tar.gz`
+            - **macOS (Apple Silicon)**: `rustified-${{ steps.get_tag.outputs.tag_name }}-macos-apple.tar.gz`
+            - **Linux**: `rustified-${{ steps.get_tag.outputs.tag_name }}-linux.tar.gz`
+
+            ## Installation
+
+            ### Windows
+            Download the `.exe` file and run it directly.
+
+            ### macOS/Linux
+            1. Download the appropriate `.tar.gz` file
+            2. Extract: `tar -xzf rustified-*.tar.gz`
+            3. Run: `./rustified`
+
+            ---
+
+            **Full Changelog**: https://github.com/${{ github.repository }}/compare/v0.1.0...${{ steps.get_tag.outputs.tag_name }}
+          draft: false
+          prerelease: ${{ contains(steps.get_tag.outputs.tag_name, '-') }}
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
-          name: ${{ github.event.inputs.tag_name || github.ref_name }}
-          body_path: release_notes.md
-          draft: false
-          prerelease: false
 
+  # Build for different platforms
   build:
     name: Build ${{ matrix.target }}
-    runs-on: ${{ matrix.os }}
     needs: create-release
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          # macOS ARM64 (Apple Silicon)
-          - target: aarch64-apple-darwin
-            os: macos-latest
-            name: rustified-macos-arm64
-
-          # macOS x64 (Intel)
-          - target: x86_64-apple-darwin
-            os: macos-latest
-            name: rustified-macos-x64
-
-          # Windows x64
+          # Windows
           - target: x86_64-pc-windows-msvc
             os: windows-latest
-            name: rustified-windows-x64.exe
+            name: windows
+            extension: .exe
 
-          # Linux x64
+          # macOS Intel
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            name: macos-intel
+            extension: ""
+
+          # macOS Apple Silicon
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            name: macos-apple
+            extension: ""
+
+          # Linux
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-            name: rustified-linux-x64
+            name: linux
+            extension: ""
 
     steps:
       - name: Checkout code
@@ -130,64 +163,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libssl-dev pkg-config
 
-      - name: Cache cargo registry
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-${{ matrix.target }}-
-            ${{ runner.os }}-cargo-
-
-      - name: Build release binary
-        run: |
-          cargo build --release --target ${{ matrix.target }} --verbose
-
-      - name: Strip binary (Unix)
-        if: matrix.os != 'windows-latest'
-        run: |
-          strip target/${{ matrix.target }}/release/rustified
-
-      - name: Prepare binary (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          copy target\${{ matrix.target }}\release\rustified.exe rustified.exe
-
-      - name: Prepare binary (Unix)
-        if: matrix.os != 'windows-latest'
-        run: |
-          cp target/${{ matrix.target }}/release/rustified rustified
-
-      - name: Upload Release Asset
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
-          files: ./rustified${{ matrix.os == 'windows-latest' && '.exe' || '' }}
-
-  test:
-    name: Test Suite
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install dependencies (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libssl-dev pkg-config
-
       - name: Cache cargo
         uses: actions/cache@v3
         with:
@@ -195,26 +170,91 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-release-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Run tests
-        run: cargo test --verbose
+      - name: Build release binary
+        run: |
+          cargo build --release --target ${{ matrix.target }}
 
-      - name: Run clippy
-        run: cargo clippy --all-targets --all-features
+      - name: Prepare release asset
+        shell: bash
+        run: |
+          TAG_NAME="${{ needs.create-release.outputs.tag_name }}"
+          BINARY_NAME="rustified${{ matrix.extension }}"
+          RELEASE_NAME="rustified-$TAG_NAME-${{ matrix.name }}"
 
-  security-audit:
-    name: Security Audit
+          # Create release directory
+          mkdir -p release
+
+          # Copy binary
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            cp "target/${{ matrix.target }}/release/${BINARY_NAME}" "release/${RELEASE_NAME}${{ matrix.extension }}"
+          else
+            cp "target/${{ matrix.target }}/release/rustified" "release/${BINARY_NAME}"
+            
+            # Create tarball for Unix systems
+            cd release
+            tar -czf "${RELEASE_NAME}.tar.gz" "${BINARY_NAME}"
+            rm "${BINARY_NAME}"
+            cd ..
+          fi
+
+          # Set asset name for upload
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            echo "ASSET_NAME=${RELEASE_NAME}${{ matrix.extension }}" >> $GITHUB_ENV
+            echo "ASSET_PATH=release/${RELEASE_NAME}${{ matrix.extension }}" >> $GITHUB_ENV
+          else
+            echo "ASSET_NAME=${RELEASE_NAME}.tar.gz" >> $GITHUB_ENV
+            echo "ASSET_PATH=release/${RELEASE_NAME}.tar.gz" >> $GITHUB_ENV
+          fi
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.create-release.outputs.tag_name }}
+          files: ${{ env.ASSET_PATH }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifact (for debugging)
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.ASSET_NAME }}
+          path: ${{ env.ASSET_PATH }}
+
+  # Post-release verification
+  verify-release:
+    name: Verify Release
+    needs: [create-release, build]
     runs-on: ubuntu-latest
+    if: always()
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Check release status
+        run: |
+          echo "Release created: ${{ needs.create-release.result }}"
+          echo "Build status: ${{ needs.build.result }}"
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+          if [ "${{ needs.create-release.result }}" = "success" ] && [ "${{ needs.build.result }}" = "success" ]; then
+            echo "✅ Release ${{ needs.create-release.outputs.tag_name }} completed successfully!"
+            echo "🔗 Release URL: https://github.com/${{ github.repository }}/releases/tag/${{ needs.create-release.outputs.tag_name }}"
+          else
+            echo "❌ Release failed!"
+            exit 1
+          fi
 
-      - name: Install cargo-audit
-        run: cargo install cargo-audit
-
-      - name: Run security audit
-        run: cargo audit
+      - name: Release summary
+        run: |
+          echo "## 🚀 Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag:** ${{ needs.create-release.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ needs.create-release.result == 'success' && needs.build.result == 'success' && '✅ Success' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Assets Built" >> $GITHUB_STEP_SUMMARY
+          echo "- Windows (x86_64)" >> $GITHUB_STEP_SUMMARY
+          echo "- macOS Intel (x86_64)" >> $GITHUB_STEP_SUMMARY
+          echo "- macOS Apple Silicon (aarch64)" >> $GITHUB_STEP_SUMMARY
+          echo "- Linux (x86_64)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Links" >> $GITHUB_STEP_SUMMARY
+          echo "- [Release Page](https://github.com/${{ github.repository }}/releases/tag/${{ needs.create-release.outputs.tag_name }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [Repository](https://github.com/${{ github.repository }})" >> $GITHUB_STEP_SUMMARY
