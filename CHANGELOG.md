@@ -19,6 +19,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [0.1.1] - 2025-05-28
+
+### Changed
+- **Release Workflow**: Enhanced GitHub release creation with proper changelog content extraction
+- **Repository Cleanup**: Removed automated changelog generation in favor of manual management
+
+### Fixed
+- **GitHub Actions**: Resolved race conditions between auto-format and changelog workflows
+
 ## [0.1.0] - 2025-05-28
 
 ### Added
