@@ -14,7 +14,7 @@ const LOG_FORMAT: &[FormatItem] =
 #[derive(Parser)]
 #[command(name = "rustified")]
 #[command(about = "A Minecraft CLI launcher written in Rust")]
-#[command(version = "1.0.0")]
+#[command(version = "0.2.0")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -125,7 +125,7 @@ async fn main() -> anyhow::Result<()> {
 
     let cli = Cli::parse();
 
-    info!("Rustified Minecraft Launcher v1.0.0");
+    info!("Rustified Minecraft Launcher v0.2.0");
     info!("=====================================");
 
     // Initialize the launcher

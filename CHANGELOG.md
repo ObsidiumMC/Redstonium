@@ -19,6 +19,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [0.2.0] - 2025-05-29
+
+### Changed
+- **BREAKING**: Launch command now requires instance name instead of version
+- Updated CLI to use instance-based launching workflow
+- Improved error messages for missing instances
+- Updated documentation to reflect instance-based workflow
+
+### Removed
+- **BREAKING**: Removed default instance logic from launcher
+- Removed automatic instance creation during launch
+
+### Fixed
+- Improved instance management workflow consistency
+- Updated justfile commands to work with instances
+
 ## [0.1.6] - 2025-05-28
 
 ### Fixed
