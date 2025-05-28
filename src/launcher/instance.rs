@@ -282,15 +282,6 @@ impl InstanceManager {
         Ok(())
     }
 
-    /// Get the default instance name (most recently used)
-    pub fn get_default_instance(&self) -> Option<&str> {
-        self.instances
-            .values()
-            .filter(|config| config.last_used.is_some())
-            .max_by_key(|config| config.last_used)
-            .map(|config| config.name.as_str())
-    }
-
     /// Create instance game directory and ensure it's properly set up
     pub fn ensure_instance_directory(&self, name: &str) -> Result<PathBuf> {
         let instance_dir = self.minecraft_dir.base_path.join("instances").join(name);

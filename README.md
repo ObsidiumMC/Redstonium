@@ -88,15 +88,20 @@ Set up your `.env` file with your Microsoft Azure Client ID (see Installation se
 ```
 
 ### 4. Launch Minecraft
+First, create an instance:
 ```bash
-./target/release/rustified launch 1.21.5
+./target/release/rustified instance create my_instance 1.21.5
+```
+
+Then launch it:
+```bash
+./target/release/rustified launch my_instance
 ```
 
 On first launch, it will:
 1. Open your browser for Microsoft authentication
-2. Create a default instance if none exists
-3. Download any missing game files
-4. Launch Minecraft
+2. Download any missing game files for the instance's version
+3. Launch Minecraft with the instance configuration
 
 ## 📚 Commands
 
@@ -106,10 +111,13 @@ On first launch, it will:
 # List available Minecraft versions
 ./rustified list
 
-# Launch a specific version
-./rustified launch 1.21.5
+# Create an instance for a specific version
+./rustified instance create my_instance 1.21.5
 
-# Download files without launching
+# Launch an instance
+./rustified launch my_instance
+
+# Download files for a version without launching
 ./rustified prepare 1.21.5
 
 # Check authentication status
@@ -129,7 +137,7 @@ On first launch, it will:
 ./rustified instance create my_instance 1.21.5 --description "My custom setup"
 
 # Launch with specific instance
-./rustified launch 1.21.5 --instance my_instance
+./rustified launch my_instance
 
 # List all instances
 ./rustified instance list

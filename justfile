@@ -70,13 +70,13 @@ coverage:
 pre-commit: format clippy-strict test
     @echo "🎉 Pre-commit checks passed! Ready to commit."
 
-# Run the launcher with debug logging
-run-debug version:
-    RUST_LOG=debug cargo run -- launch {{version}}
+# Run the launcher with debug logging (requires an instance)
+run-debug instance:
+    RUST_LOG=debug cargo run -- launch {{instance}}
 
-# Run the launcher
-run version:
-    cargo run -- launch {{version}}
+# Run the launcher (requires an instance)
+run instance:
+    cargo run -- launch {{instance}}
 
 # List available Minecraft versions
 list-versions:

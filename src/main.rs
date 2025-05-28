@@ -31,13 +31,10 @@ enum Commands {
         #[arg(short, long, default_value = "10")]
         limit: usize,
     },
-    /// Launch a specific Minecraft version
+    /// Launch a Minecraft instance
     Launch {
-        /// Version to launch (e.g., "1.20.4", "latest-release", "latest-snapshot")
-        version: String,
-        /// Instance to use (optional, uses default if not specified)
-        #[arg(short, long)]
-        instance: Option<String>,
+        /// Instance to launch
+        instance: String,
         /// Skip file verification (faster launch)
         #[arg(long)]
         skip_verification: bool,
@@ -152,11 +149,10 @@ async fn main() -> anyhow::Result<()> {
             list_versions(&launcher, releases_only, limit).await?;
         }
         Commands::Launch {
-            version,
             instance,
             skip_verification,
         } => {
-            launch_game(&launcher, &version, instance, skip_verification).await?;
+            launch_game(&launcher, &instance, skip_verification).await?;
         }
         Commands::Prepare { version } => {
             prepare_game(&launcher, &version).await?;
@@ -255,47 +251,30 @@ async fn prepare_game(launcher: &launcher::Launcher, version: &str) -> anyhow::R
 
 async fn launch_game(
     launcher: &launcher::Launcher,
-    version: &str,
-    instance: Option<String>,
+    instance_name: &str,
     _skip_verification: bool,
 ) -> anyhow::Result<()> {
-    let resolved_version = resolve_version_alias(launcher, version).await?;
-
-    // Determine which instance to use
-    let instance_name = if let Some(name) = instance {
-        name
-    } else {
+    // Get the instance configuration and extract the version
+    let (instance_config, version) = {
         let instance_manager = launcher.instance_manager.lock().await;
-        if let Some(default) = instance_manager.get_default_instance() {
-            info!("Using default instance: {}", default);
-            default.to_string()
+        if let Some(config) = instance_manager.get_instance(instance_name) {
+            let config_clone = config.clone();
+            let version = config.version.clone();
+            (Some(config_clone), version)
         } else {
-            drop(instance_manager); // Release lock
-            // Create a default instance if none exists
-            info!("No instances found, creating default instance...");
-            let mut instance_manager = launcher.instance_manager.lock().await;
-            instance_manager
-                .create_instance(
-                    "default".to_string(),
-                    resolved_version.clone(),
-                    Some("Default instance".to_string()),
-                )
-                .await?;
-            info!("✓ Created default instance");
-            "default".to_string()
-        }
-    };
-
-    // Verify instance exists and update last used
-    {
-        let mut instance_manager = launcher.instance_manager.lock().await;
-        if instance_manager.get_instance(&instance_name).is_none() {
             return Err(anyhow::anyhow!(
-                "Instance '{}' does not exist",
+                "Instance '{}' does not exist. Use 'rustified instance list' to see available instances or 'rustified instance create' to create one.",
                 instance_name
             ));
         }
-        instance_manager.update_last_used(&instance_name).await?;
+    };
+
+    let resolved_version = resolve_version_alias(launcher, &version).await?;
+
+    // Update last used timestamp
+    {
+        let mut instance_manager = launcher.instance_manager.lock().await;
+        instance_manager.update_last_used(instance_name).await?;
     }
 
     info!(
@@ -326,12 +305,6 @@ async fn launch_game(
 
     // Launch the game
     info!("Starting Minecraft {}...", resolved_version);
-
-    // Get the instance config for launching
-    let instance_config = {
-        let instance_manager = launcher.instance_manager.lock().await;
-        instance_manager.get_instance(&instance_name).cloned()
-    };
 
     launcher
         .launch_game(&resolved_version, &auth_result, instance_config.as_ref())
@@ -370,7 +343,7 @@ async fn handle_auth_command(action: AuthCommands) -> anyhow::Result<()> {
                 // Don't log the token for security
             } else {
                 info!("❌ No valid authentication found");
-                info!("  Run 'rustified launch <version>' to authenticate");
+                info!("  Run 'rustified launch <instance>' to authenticate");
             }
         }
         AuthCommands::Clear => {
