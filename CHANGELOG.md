@@ -19,6 +19,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [0.1.2] - 2025-05-28
+
+### Fixed
+- **GitHub Releases**: Updated release workflow to use modern `softprops/action-gh-release` action
+- **Release Creation**: Fixed issue where tags were created instead of proper GitHub releases
+- **Asset Upload**: Improved binary asset upload process for releases
+
+### Removed
+- **Changelog Generator**: Permanently removed conflicting changelog automation workflow
+
 ## [0.1.1] - 2025-05-28
 
 ### Changed
