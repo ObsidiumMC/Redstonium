@@ -15,180 +15,9 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  update-changelog:
-    name: Update Changelog
-    runs-on: ubuntu-latest
-    outputs:
-      changelog_updated: ${{ steps.check_changelog.outputs.changed }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-
-      - name: Generate changelog for release
-        run: |
-          cat > generate_release_changelog.py << 'EOF'
-          #!/usr/bin/env python3
-          import subprocess
-          import re
-          from datetime import datetime
-          from collections import defaultdict
-          import sys
-          import os
-
-          def run_git_command(cmd):
-              try:
-                  result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-                  return result.stdout.strip()
-              except Exception as e:
-                  print(f"Error running git command: {e}")
-                  return ""
-
-          def parse_commit_message(message):
-              pattern = r'^(feat|fix|docs|style|refactor|test|chore|perf|build|ci|revert)(\([^)]+\))?: (.+)$'
-              match = re.match(pattern, message, re.IGNORECASE)
-              
-              if match:
-                  commit_type = match.group(1).lower()
-                  scope = match.group(2)[1:-1] if match.group(2) else None
-                  description = match.group(3)
-                  return commit_type, scope, description
-              else:
-                  return 'other', None, message
-
-          def categorize_commit(commit_type):
-              mapping = {
-                  'feat': 'Added',
-                  'fix': 'Fixed',
-                  'docs': 'Changed',
-                  'style': 'Changed',
-                  'refactor': 'Changed',
-                  'perf': 'Changed',
-                  'test': 'Added',
-                  'chore': 'Changed',
-                  'build': 'Changed',
-                  'ci': 'Changed',
-                  'revert': 'Fixed',
-                  'other': 'Changed'
-              }
-              return mapping.get(commit_type, 'Changed')
-
-          def main():
-              # Get version from environment or tag
-              version = os.environ.get('GITHUB_REF_NAME', '').replace('v', '')
-              if not version:
-                  version = run_git_command("git describe --tags --abbrev=0").replace('v', '')
-              
-              # Get commits since last tag
-              last_tag = run_git_command("git describe --tags --abbrev=0 HEAD~1 2>/dev/null")
-              if last_tag:
-                  commits = run_git_command(f"git log {last_tag}..HEAD --pretty=format:'%s|||%H|||%an|||%ad' --date=short")
-              else:
-                  commits = run_git_command("git log --pretty=format:'%s|||%H|||%an|||%ad' --date=short")
-              
-              commit_list = [line.split('|||') for line in commits.split('\n') if line.strip()]
-              
-              # Group commits by category
-              categories = defaultdict(list)
-              
-              for commit_data in commit_list:
-                  if len(commit_data) >= 4:
-                      message, hash_short, author, date = commit_data[:4]
-                      
-                      if message.startswith('Merge') or 'CHANGELOG' in message.upper() or '[skip ci]' in message:
-                          continue
-                      
-                      commit_type, scope, description = parse_commit_message(message)
-                      category = categorize_commit(commit_type)
-                      
-                      entry = f"- {description.capitalize()}"
-                      if scope:
-                          entry = f"- **{scope}**: {description.capitalize()}"
-                      
-                      categories[category].append(entry)
-              
-              # Generate new changelog entry
-              current_date = datetime.now().strftime('%Y-%m-%d')
-              new_entry = f"""## [{version}] - {current_date}
-
-          """
-              
-              for category in ['Added', 'Changed', 'Fixed', 'Removed']:
-                  if category in categories and categories[category]:
-                      new_entry += f"### {category}\n"
-                      for entry in sorted(set(categories[category])):
-                          new_entry += f"{entry}\n"
-                      new_entry += "\n"
-              
-              # Read existing changelog
-              try:
-                  with open('CHANGELOG.md', 'r') as f:
-                      existing_content = f.read()
-              except FileNotFoundError:
-                  existing_content = """# Changelog
-
-          All notable changes to this project will be documented in this file.
-
-          The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-          and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-          """
-              
-              # Insert new entry after header
-              header_end = existing_content.find('\n## ')
-              if header_end == -1:
-                  # No existing entries, add after header
-                  header_pattern = r'(.*?and this project adheres to.*?\n\n)'
-                  match = re.search(header_pattern, existing_content, re.DOTALL)
-                  if match:
-                      new_changelog = match.group(1) + new_entry + '\n'
-                  else:
-                      new_changelog = existing_content + '\n' + new_entry
-              else:
-                  # Insert before first existing entry
-                  new_changelog = existing_content[:header_end] + '\n' + new_entry + existing_content[header_end:]
-              
-              # Write updated changelog
-              with open('CHANGELOG.md', 'w') as f:
-                  f.write(new_changelog)
-              
-              print(f"Updated changelog for version {version}")
-
-          if __name__ == "__main__":
-              main()
-          EOF
-
-          python generate_release_changelog.py
-
-      - name: Check if changelog was updated
-        id: check_changelog
-        run: |
-          if ! git diff --exit-code CHANGELOG.md; then
-            echo "changed=true" >> $GITHUB_OUTPUT
-          else
-            echo "changed=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Commit changelog
-        if: steps.check_changelog.outputs.changed == 'true'
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add CHANGELOG.md
-          git commit -m "docs: update CHANGELOG.md for ${{ github.ref_name }} [skip ci]"
-          git push
-
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
-    needs: update-changelog
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
       release_id: ${{ steps.create_release.outputs.id }}
@@ -198,37 +27,55 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get changelog content for release
+      - name: Extract changelog content
         id: changelog
         run: |
-          VERSION="${{ github.ref_name }}"
+          VERSION="${{ github.event.inputs.tag_name || github.ref_name }}"
+          VERSION_NUMBER="${VERSION#v}"  # Remove 'v' prefix if present
+          
           # Extract the changelog section for this version
           python3 << 'EOF'
           import re
-
+          import sys
+          
+          version = "$VERSION_NUMBER"
+          
           try:
               with open('CHANGELOG.md', 'r') as f:
                   content = f.read()
               
               # Find the section for this version
-              version = "${{ github.ref_name }}".replace('v', '')
-              pattern = f'## \[{re.escape(version)}\].*?\n(.*?)(?=\n## \[|$)'
+              # Look for ## [version] - date
+              pattern = rf'## \[{re.escape(version)}\][^\n]*\n(.*?)(?=\n## \[|\n#[^#]|\Z)'
               match = re.search(pattern, content, re.DOTALL)
               
               if match:
                   release_notes = match.group(1).strip()
+                  # Clean up the content - remove extra newlines
+                  release_notes = re.sub(r'\n{3,}', '\n\n', release_notes)
+                  
                   # Save to file for GitHub Actions
                   with open('release_notes.md', 'w') as f:
                       f.write(release_notes)
-                  print("Found release notes for version", version)
+                  print(f"✅ Found changelog content for version {version}")
+                  print("📝 Release notes:")
+                  print(release_notes[:200] + "..." if len(release_notes) > 200 else release_notes)
               else:
-                  print("No release notes found for version", version)
+                  print(f"⚠️ No changelog entry found for version {version}")
+                  print("🔍 Available versions in changelog:")
+                  # Show available versions
+                  version_pattern = r'## \[([^\]]+)\]'
+                  versions = re.findall(version_pattern, content)
+                  for v in versions[:5]:  # Show first 5 versions
+                      print(f"  - {v}")
+                  
+                  # Create fallback content
                   with open('release_notes.md', 'w') as f:
-                      f.write("Release notes for ${{ github.ref_name }}")
+                      f.write(f"Release {version} of Rustified Minecraft Launcher.\n\nSee [CHANGELOG.md](./CHANGELOG.md) for detailed changes.")
           except Exception as e:
-              print(f"Error: {e}")
+              print(f"❌ Error processing changelog: {e}")
               with open('release_notes.md', 'w') as f:
-                  f.write("Release notes for ${{ github.ref_name }}")
+                  f.write(f"Release {version} of Rustified Minecraft Launcher.\n\nSee [CHANGELOG.md](./CHANGELOG.md) for detailed changes.")
           EOF
 
       - name: Create Release
@@ -238,7 +85,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
-          release_name: Rustified ${{ github.event.inputs.tag_name || github.ref_name }}
+          release_name: ${{ github.event.inputs.tag_name || github.ref_name }}
           body_path: release_notes.md
 
   build:
