@@ -79,39 +79,26 @@ jobs:
           tag_name: ${{ steps.get_tag.outputs.tag_name }}
           name: "Rustified ${{ steps.get_tag.outputs.tag_name }}"
           body: |
-            # Rustified ${{ steps.get_tag.outputs.tag_name }}
-
             A fast and modern Minecraft launcher built with Rust.
 
-            ## What's Changed
+            ## Changes
 
             ${{ steps.changelog.outputs.changelog }}
 
-            ## Download
+            ## Downloads
 
-            Choose the appropriate version for your operating system:
-
-            - **Windows**: `rustified-${{ steps.get_tag.outputs.tag_name }}-windows.exe`
-            - **macOS (Intel)**: `rustified-${{ steps.get_tag.outputs.tag_name }}-macos-intel.tar.gz`
-            - **macOS (Apple Silicon)**: `rustified-${{ steps.get_tag.outputs.tag_name }}-macos-apple.tar.gz`
-            - **Linux**: `rustified-${{ steps.get_tag.outputs.tag_name }}-linux.tar.gz`
+            **Windows**: `rustified-${{ steps.get_tag.outputs.tag_name }}-windows.exe`  
+            **macOS Intel**: `rustified-${{ steps.get_tag.outputs.tag_name }}-macos-intel.tar.gz`  
+            **macOS Apple Silicon**: `rustified-${{ steps.get_tag.outputs.tag_name }}-macos-apple.tar.gz`  
+            **Linux**: `rustified-${{ steps.get_tag.outputs.tag_name }}-linux.tar.gz`
 
             ## Installation
 
-            ### Windows
-            Download the `.exe` file and run it directly.
-
-            ### macOS/Linux
-            1. Download the appropriate `.tar.gz` file
-            2. Extract: `tar -xzf rustified-*.tar.gz`
-            3. Run: `./rustified`
-
-            ---
-
-            **Full Changelog**: https://github.com/${{ github.repository }}/compare/v0.1.0...${{ steps.get_tag.outputs.tag_name }}
+            **Windows**: Download and run the `.exe` file  
+            **macOS/Linux**: Download the `.tar.gz`, extract with `tar -xzf rustified-*.tar.gz`, then run `./rustified`
           draft: false
           prerelease: ${{ contains(steps.get_tag.outputs.tag_name, '-') }}
-          generate_release_notes: true
+          generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
