@@ -3,13 +3,13 @@ name = "rustified"
 version = "0.2.0"
 edition = "2024"
 authors = ["OmarAfet"]
-description = "A fast and modern Minecraft launcher built with Rust"
+description = "A command-line Minecraft launcher written in Rust."
 readme = "README.md"
 homepage = "https://github.com/OmarAfet/rustified"
 repository = "https://github.com/OmarAfet/rustified"
 license = "MIT"
-keywords = ["minecraft", "launcher", "gaming", "mojang"]
-categories = ["games", "command-line-utilities"]
+keywords = ["minecraft", "cli", "launcher", "automation", "modpacks", "cross-platform"]
+categories = ["games", "command-line-utilities", "automation-tools", "network-programming"]
 exclude = [
     "target/",
     ".env",
@@ -22,48 +22,32 @@ exclude = [
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
-# Lint configuration - enforce strict code quality standards
-[lints.rust]
-# Dead code detection - zero tolerance policy
-dead_code = "deny"
-unused_imports = "deny"
-unused_variables = "deny"
-unused_mut = "deny"
-unused_must_use = "warn"
-
-[lints.clippy]
-# Additional clippy lints for code quality
-all = { level = "deny", priority = -1 }
-correctness = { level = "deny", priority = -1 }
-suspicious = { level = "deny", priority = -1 }
-complexity = { level = "warn", priority = -1 }
-perf = { level = "warn", priority = -1 }
-style = { level = "warn", priority = -1 }
-# Allow some clippy lints that might be too strict for development
-too_many_arguments = "allow"
-module_inception = "allow"
-
 [dependencies]
+# Core async and HTTP
 reqwest = { version = "0.11", features = ["json"] }
 tokio = { version = "1", features = ["full"] }
+# Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+# Error handling
 anyhow = "1.0"
-dotenv = "0.15"
+# Env and OAuth
+dotenvy = "0.15"
 oauth2 = "4.4"
 url = "2.4"
 webbrowser = "0.8"
 base64 = "0.21"
 uuid = { version = "1.4", features = ["v4", "serde"] }
-# Logging dependencies
+# Logging
 log = "0.4"
 env_logger = "0.10"
+# Time/date
 time = { version = "0.3", features = ["formatting", "macros", "local-offset", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
 # Local server for OAuth redirect
 tiny_http = "0.12"
-# Additional dependencies for launcher functionality
+# Minecraft launcher functionality
 sha1 = "0.10"
 clap = { version = "4.0", features = ["derive"] }
 zip = "0.6"
 futures-util = "0.3"
-chrono = { version = "0.4", features = ["serde"] }

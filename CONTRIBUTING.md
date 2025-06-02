@@ -87,6 +87,22 @@ cargo run -- launch 1.20.4
 
 **⚠️ Important:** Make sure there are no dead code warnings before submitting your PR. Our CI will automatically reject PRs with unused code.
 
+### 4. Prepare for Pull Request
+
+Before opening a Pull Request, run the following script to ensure your branch meets all requirements:
+
+```bash
+scripts/prepare-pr.sh
+```
+
+This script will:
+- Check for uncommitted changes
+- Check code formatting
+- Run clippy with dead code checks
+- Run all tests
+
+Your branch must pass all these checks before submitting a PR.
+
 ### Quick Commands (using justfile)
 
 If you have [`just`](https://github.com/casey/just) installed, you can use these convenient commands:
@@ -105,7 +121,7 @@ just pre-commit
 just setup
 ```
 
-### 4. Commit Your Changes
+### 5. Commit Your Changes
 
 ```bash
 git add .
@@ -121,7 +137,7 @@ git commit -m "feat: add amazing new feature"
 - `test:` - Adding tests
 - `chore:` - Maintenance tasks
 
-### 5. Push and Create Pull Request
+### 6. Push and Create Pull Request
 
 ```bash
 git push origin feature/your-feature-name

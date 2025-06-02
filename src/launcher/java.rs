@@ -5,6 +5,8 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use crate::launcher;
+
 #[derive(Debug, Clone)]
 pub struct JavaInstallation {
     pub path: PathBuf,
@@ -30,9 +32,9 @@ impl JavaManager {
     }
 
     /// Initialize the Java manager by scanning for Java installations
-    pub async fn initialize(&mut self) -> Result<()> {
+    pub fn initialize(&mut self) {
         info!("Scanning for Java installations...");
-        self.scan_java_installations().await?;
+        self.scan_java_installations();
 
         if self.installations.is_empty() {
             warn!(
@@ -44,8 +46,6 @@ impl JavaManager {
                 info!("  Java {}: {}", major, installation.path.display());
             }
         }
-
-        Ok(())
     }
 
     /// Get the required Java version for a specific Minecraft version
@@ -80,10 +80,7 @@ impl JavaManager {
 
         // First, try to find the exact required version
         if let Some(installation) = self.installations.get(&required_version) {
-            debug!(
-                "Using Java {} for Minecraft {}",
-                required_version, minecraft_version
-            );
+            debug!("Using Java {required_version} for Minecraft {minecraft_version}");
             return Ok(installation);
         }
 
@@ -98,8 +95,7 @@ impl JavaManager {
 
         if let Some((major, installation)) = compatible_versions.first() {
             warn!(
-                "Required Java {} not found for Minecraft {}, using Java {} instead",
-                required_version, minecraft_version, major
+                "Required Java {required_version} not found for Minecraft {minecraft_version}, using Java {major} instead"
             );
             return Ok(installation);
         }
@@ -110,8 +106,7 @@ impl JavaManager {
 
         if let Some((major, installation)) = all_versions.last() {
             warn!(
-                "No compatible Java version found for Minecraft {} (requires Java {}), using Java {} - this may not work!",
-                minecraft_version, required_version, major
+                "No compatible Java version found for Minecraft {minecraft_version} (requires Java {required_version}), using Java {major} - this may not work!"
             );
             return Ok(installation);
         }
@@ -124,7 +119,7 @@ impl JavaManager {
     }
 
     /// Scan for Java installations in common locations
-    async fn scan_java_installations(&mut self) -> Result<()> {
+    fn scan_java_installations(&mut self) {
         // Check JAVA_HOME first
         if let Ok(java_home) = env::var("JAVA_HOME") {
             let java_path = PathBuf::from(java_home).join("bin").join(if cfg!(windows) {
@@ -133,7 +128,7 @@ impl JavaManager {
                 "java"
             });
 
-            if let Ok(installation) = self.probe_java_installation(&java_path).await {
+            if let Ok(installation) = launcher::java::JavaManager::probe_java_installation(&java_path) {
                 debug!("Found Java via JAVA_HOME: {}", installation.path.display());
                 self.installations
                     .insert(installation.major_version, installation);
@@ -142,7 +137,7 @@ impl JavaManager {
 
         // Check system PATH
         let java_executable = if cfg!(windows) { "java.exe" } else { "java" };
-        if let Ok(installation) = self.probe_java_installation_by_name(java_executable).await {
+        if let Ok(installation) = launcher::java::JavaManager::probe_java_installation_by_name(java_executable) {
             if let std::collections::hash_map::Entry::Vacant(e) =
                 self.installations.entry(installation.major_version)
             {
@@ -152,13 +147,11 @@ impl JavaManager {
         }
 
         // Check common installation directories
-        self.scan_common_java_directories().await?;
-
-        Ok(())
+        self.scan_common_java_directories();
     }
 
     /// Scan common Java installation directories
-    async fn scan_common_java_directories(&mut self) -> Result<()> {
+    fn scan_common_java_directories(&mut self) {
         let common_paths = if cfg!(windows) {
             vec![
                 r"C:\Program Files\Java",
@@ -186,7 +179,7 @@ impl JavaManager {
                             "java"
                         });
 
-                        if let Ok(installation) = self.probe_java_installation(&java_path).await {
+                        if let Ok(installation) = launcher::java::JavaManager::probe_java_installation(&java_path) {
                             if let std::collections::hash_map::Entry::Vacant(e) =
                                 self.installations.entry(installation.major_version)
                             {
@@ -204,14 +197,12 @@ impl JavaManager {
 
         // Special handling for macOS java_home
         if cfg!(target_os = "macos") {
-            self.scan_macos_java_home().await?;
+            self.scan_macos_java_home();
         }
-
-        Ok(())
     }
 
-    /// Scan Java installations using macOS java_home utility
-    async fn scan_macos_java_home(&mut self) -> Result<()> {
+    /// Scan Java installations using macOS `java_home` utility
+    fn scan_macos_java_home(&mut self) {
         let versions = ["8", "11", "16", "17", "21"];
 
         for version in &versions {
@@ -224,7 +215,7 @@ impl JavaManager {
                     let java_home = String::from_utf8_lossy(&output.stdout).trim().to_string();
                     let java_path = PathBuf::from(java_home).join("bin").join("java");
 
-                    if let Ok(installation) = self.probe_java_installation(&java_path).await {
+                    if let Ok(installation) = launcher::java::JavaManager::probe_java_installation(&java_path) {
                         if let std::collections::hash_map::Entry::Vacant(e) =
                             self.installations.entry(installation.major_version)
                         {
@@ -235,12 +226,10 @@ impl JavaManager {
                 }
             }
         }
-
-        Ok(())
     }
 
     /// Probe a Java installation by executable name
-    async fn probe_java_installation_by_name(&self, executable: &str) -> Result<JavaInstallation> {
+    fn probe_java_installation_by_name(executable: &str) -> Result<JavaInstallation> {
         if let Ok(output) = Command::new(executable).arg("-version").output() {
             if output.status.success() {
                 let version_output = String::from_utf8_lossy(&output.stderr);
@@ -268,7 +257,7 @@ impl JavaManager {
     }
 
     /// Probe a specific Java installation path
-    async fn probe_java_installation(&self, java_path: &Path) -> Result<JavaInstallation> {
+    fn probe_java_installation(java_path: &Path) -> Result<JavaInstallation> {
         if !java_path.exists() {
             return Err(anyhow!(
                 "Java executable not found: {}",
@@ -358,6 +347,7 @@ fn parse_java_version(version_output: &str) -> Option<JavaVersion> {
     None
 }
 
+#[allow(clippy::match_same_arms)]
 /// Parse Minecraft version to extract major and minor version numbers
 fn parse_minecraft_version(version: &str) -> Option<(u32, u32)> {
     // Handle versions like "1.20.4", "1.21", "24w14a" (snapshots)

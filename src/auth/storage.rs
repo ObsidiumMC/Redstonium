@@ -46,11 +46,13 @@ impl AuthStorage {
             "linux" => {
                 // Use XDG_CACHE_HOME if available, otherwise ~/.cache
                 let cache_dir = std::env::var("XDG_CACHE_HOME")
-                    .map(PathBuf::from)
-                    .unwrap_or_else(|_| {
-                        let home = std::env::var("HOME").unwrap_or_default();
-                        PathBuf::from(home).join(".cache")
-                    });
+                    .map_or_else(
+                        |_| {
+                            let home = std::env::var("HOME").unwrap_or_default();
+                            PathBuf::from(home).join(".cache")
+                        },
+                        PathBuf::from,
+                    );
                 Ok(cache_dir.join("rustified"))
             }
             _ => Err(anyhow!(

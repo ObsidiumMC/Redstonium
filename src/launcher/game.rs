@@ -4,22 +4,17 @@ use std::env;
 use std::process::{Command, Stdio};
 
 use crate::auth::AuthResult;
-use crate::launcher::get_library_path;
 use crate::launcher::instance::InstanceConfig;
 use crate::launcher::java::JavaManager;
 use crate::launcher::minecraft_dir::MinecraftDir;
 use crate::launcher::version::{ArgumentValue, ArgumentValueType, VersionInfo};
+use crate::launcher::{self, get_library_path};
 
 pub struct GameLauncher {}
 
 impl GameLauncher {
-    pub fn new() -> Self {
-        Self {}
-    }
-
     /// Launch the Minecraft game with a specific instance
-    pub async fn launch(
-        &self,
+    pub fn launch(
         version_info: &VersionInfo,
         auth: &AuthResult,
         minecraft_dir: &MinecraftDir,
@@ -48,16 +43,16 @@ impl GameLauncher {
         let mut cmd = Command::new(&java_installation.path);
 
         // Add JVM arguments (with instance-specific memory settings)
-        self.add_jvm_arguments(&mut cmd, version_info, minecraft_dir, instance)?;
+        launcher::game::GameLauncher::add_jvm_arguments(&mut cmd, version_info, minecraft_dir, instance);
 
         // Add classpath
-        self.add_classpath(&mut cmd, version_info, minecraft_dir)?;
+        launcher::game::GameLauncher::add_classpath(&mut cmd, version_info, minecraft_dir)?;
 
         // Add main class
         cmd.arg(&version_info.main_class);
 
         // Add game arguments (with instance-specific game directory)
-        self.add_game_arguments(&mut cmd, version_info, auth, minecraft_dir, instance)?;
+        launcher::game::GameLauncher::add_game_arguments(&mut cmd, version_info, auth, minecraft_dir, instance)?;
 
         // Set working directory to the game directory
         cmd.current_dir(&game_dir);
@@ -68,7 +63,7 @@ impl GameLauncher {
             .stdin(Stdio::inherit());
 
         info!("Starting Minecraft process...");
-        info!("Java command: {:?}", cmd);
+        info!("Java command: {cmd:?}");
         if let Some(_inst) = instance {
             info!("Game directory: {}", game_dir.display());
         }
@@ -94,17 +89,16 @@ impl GameLauncher {
 
     /// Add JVM arguments to the command
     fn add_jvm_arguments(
-        &self,
         cmd: &mut Command,
         version_info: &VersionInfo,
         minecraft_dir: &MinecraftDir,
         instance: Option<&InstanceConfig>,
-    ) -> Result<()> {
+    ) {
         // Use instance-specific memory settings or defaults
-        let (min_mem, max_mem) = if let Some(_inst) = instance {
-            if let Some(memory) = _inst.settings.memory_mb {
+        let (min_mem, max_mem) = if let Some(inst) = instance {
+            if let Some(memory) = inst.settings.memory_mb {
                 let min = format!("-Xms{}M", memory / 2); // Allocate half as minimum
-                let max = format!("-Xmx{}M", memory);
+                let max = format!("-Xmx{memory}M");
                 (min, max)
             } else {
                 ("-Xms1G".to_string(), "-Xmx2G".to_string())
@@ -146,23 +140,14 @@ impl GameLauncher {
         if let Some(arguments) = &version_info.arguments {
             if let Some(jvm_args) = &arguments.jvm {
                 for arg in jvm_args {
-                    self.add_conditional_jvm_argument(
-                        cmd,
-                        arg,
-                        version_info,
-                        minecraft_dir,
-                        instance,
-                    )?;
+                    launcher::game::GameLauncher::add_conditional_jvm_argument(cmd, arg, version_info, minecraft_dir, instance);
                 }
             }
         }
-
-        Ok(())
     }
 
     /// Add classpath to the command
     fn add_classpath(
-        &self,
         cmd: &mut Command,
         version_info: &VersionInfo,
         minecraft_dir: &MinecraftDir,
@@ -246,7 +231,7 @@ impl GameLauncher {
         let separator = if cfg!(windows) { ";" } else { ":" };
         let classpath_str = classpath.join(separator);
 
-        debug!("Final Classpath: {}", classpath_str);
+        debug!("Final Classpath: {classpath_str}");
         cmd.args(["-cp", &classpath_str]);
 
         Ok(())
@@ -254,7 +239,6 @@ impl GameLauncher {
 
     /// Add game arguments to the command
     fn add_game_arguments(
-        &self,
         cmd: &mut Command,
         version_info: &VersionInfo,
         auth: &AuthResult,
@@ -265,26 +249,28 @@ impl GameLauncher {
         if let Some(arguments) = &version_info.arguments {
             if let Some(game_args) = &arguments.game {
                 for arg in game_args {
-                    self.add_conditional_argument(
-                        cmd,
-                        arg,
-                        version_info,
-                        auth,
-                        minecraft_dir,
-                        instance,
-                    )?;
+                    launcher::game::GameLauncher::add_conditional_argument(cmd, arg, version_info, auth, minecraft_dir, instance);
                 }
             }
             // Modern versions have comprehensive arguments, so we don't need to add essential arguments
         }
         // Handle legacy argument format (pre-1.13)
         else if let Some(minecraft_arguments) = &version_info.minecraft_arguments {
-            let args =
-                self.parse_legacy_arguments(minecraft_arguments, auth, minecraft_dir, instance)?;
+            let args = launcher::game::GameLauncher::parse_legacy_arguments(
+                minecraft_arguments,
+                auth,
+                minecraft_dir,
+                instance,
+            )?;
             cmd.args(args);
 
             // For legacy versions, add essential arguments that might be missing
-            self.add_essential_arguments(cmd, auth, minecraft_dir, instance)?;
+            launcher::game::GameLauncher::add_essential_arguments(
+                cmd,
+                auth,
+                minecraft_dir,
+                instance,
+            );
         }
 
         Ok(())
@@ -292,23 +278,22 @@ impl GameLauncher {
 
     /// Add conditional argument based on rules
     fn add_conditional_argument(
-        &self,
         cmd: &mut Command,
         arg: &ArgumentValue,
         version_info: &VersionInfo,
         auth: &AuthResult,
         minecraft_dir: &MinecraftDir,
         instance: Option<&InstanceConfig>,
-    ) -> Result<()> {
+    ) {
         match arg {
             ArgumentValue::Simple(value) => {
-                let resolved = self.resolve_argument_variables(
+                let resolved = launcher::game::GameLauncher::resolve_argument_variables(
                     value,
                     version_info,
                     auth,
                     minecraft_dir,
                     instance,
-                )?;
+                );
                 // Filter out demo argument when user has valid auth
                 if resolved != "--demo" {
                     cmd.arg(resolved);
@@ -316,16 +301,16 @@ impl GameLauncher {
             }
             ArgumentValue::Conditional { rules, value } => {
                 // Check if rules match current environment
-                if self.evaluate_rules(rules)? {
+                if launcher::game::GameLauncher::evaluate_rules(rules) {
                     match value {
                         ArgumentValueType::Single(val) => {
-                            let resolved = self.resolve_argument_variables(
+                            let resolved = launcher::game::GameLauncher::resolve_argument_variables(
                                 val,
                                 version_info,
                                 auth,
                                 minecraft_dir,
                                 instance,
-                            )?;
+                            );
                             // Filter out demo argument when user has valid auth
                             if resolved != "--demo" {
                                 cmd.arg(resolved);
@@ -333,13 +318,14 @@ impl GameLauncher {
                         }
                         ArgumentValueType::Multiple(vals) => {
                             for val in vals {
-                                let resolved = self.resolve_argument_variables(
-                                    val,
-                                    version_info,
-                                    auth,
-                                    minecraft_dir,
-                                    instance,
-                                )?;
+                                let resolved =
+                                    launcher::game::GameLauncher::resolve_argument_variables(
+                                        val,
+                                        version_info,
+                                        auth,
+                                        minecraft_dir,
+                                        instance,
+                                    );
                                 // Filter out demo argument when user has valid auth
                                 if resolved != "--demo" {
                                     cmd.arg(resolved);
@@ -350,49 +336,49 @@ impl GameLauncher {
                 }
             }
         }
-        Ok(())
     }
 
     /// Add conditional JVM argument based on rules (without auth parameters)
     fn add_conditional_jvm_argument(
-        &self,
         cmd: &mut Command,
         arg: &ArgumentValue,
         version_info: &VersionInfo,
         minecraft_dir: &MinecraftDir,
         instance: Option<&InstanceConfig>,
-    ) -> Result<()> {
+    ) {
         match arg {
             ArgumentValue::Simple(value) => {
-                let resolved = self.resolve_jvm_argument_variables(
+                let resolved = launcher::game::GameLauncher::resolve_jvm_argument_variables(
                     value,
                     version_info,
                     minecraft_dir,
                     instance,
-                )?;
+                );
                 cmd.arg(resolved);
             }
             ArgumentValue::Conditional { rules, value } => {
                 // Check if rules match current environment
-                if self.evaluate_rules(rules)? {
+                if launcher::game::GameLauncher::evaluate_rules(rules) {
                     match value {
                         ArgumentValueType::Single(val) => {
-                            let resolved = self.resolve_jvm_argument_variables(
-                                val,
-                                version_info,
-                                minecraft_dir,
-                                instance,
-                            )?;
-                            cmd.arg(resolved);
-                        }
-                        ArgumentValueType::Multiple(vals) => {
-                            for val in vals {
-                                let resolved = self.resolve_jvm_argument_variables(
+                            let resolved =
+                                launcher::game::GameLauncher::resolve_jvm_argument_variables(
                                     val,
                                     version_info,
                                     minecraft_dir,
                                     instance,
-                                )?;
+                                );
+                            cmd.arg(resolved);
+                        }
+                        ArgumentValueType::Multiple(vals) => {
+                            for val in vals {
+                                let resolved =
+                                    launcher::game::GameLauncher::resolve_jvm_argument_variables(
+                                        val,
+                                        version_info,
+                                        minecraft_dir,
+                                        instance,
+                                    );
                                 cmd.arg(resolved);
                             }
                         }
@@ -400,12 +386,10 @@ impl GameLauncher {
                 }
             }
         }
-        Ok(())
     }
 
     /// Parse legacy argument string
     fn parse_legacy_arguments(
-        &self,
         arguments: &str,
         auth: &AuthResult,
         minecraft_dir: &MinecraftDir,
@@ -417,11 +401,15 @@ impl GameLauncher {
         let parts: Vec<&str> = arguments.split_whitespace().collect();
 
         for part in parts {
-            if part.starts_with("${") && part.ends_with("}") {
+            if part.starts_with("${") && part.ends_with('}') {
                 // Handle variable substitution
                 let var_name = &part[2..part.len() - 1];
-                let resolved =
-                    self.resolve_legacy_variable(var_name, auth, minecraft_dir, instance)?;
+                let resolved = launcher::game::GameLauncher::resolve_legacy_variable(
+                    var_name,
+                    auth,
+                    minecraft_dir,
+                    instance,
+                )?;
                 args.push(resolved);
             } else {
                 // Filter out demo argument when user has valid auth
@@ -436,13 +424,12 @@ impl GameLauncher {
 
     /// Resolve argument variables
     fn resolve_argument_variables(
-        &self,
         arg: &str,
         version_info: &VersionInfo,
         auth: &AuthResult,
         minecraft_dir: &MinecraftDir,
         instance: Option<&InstanceConfig>,
-    ) -> Result<String> {
+    ) -> std::string::String {
         let mut resolved = arg.to_string();
 
         // Determine game directory (instance-specific or default)
@@ -489,17 +476,16 @@ impl GameLauncher {
         resolved = resolved.replace("${quickPlayMultiplayer}", "");
         resolved = resolved.replace("${quickPlayRealms}", "");
 
-        Ok(resolved)
+        resolved
     }
 
     /// Resolve JVM argument variables (without auth information)
     fn resolve_jvm_argument_variables(
-        &self,
         arg: &str,
         version_info: &VersionInfo,
         minecraft_dir: &MinecraftDir,
         instance: Option<&InstanceConfig>,
-    ) -> Result<String> {
+    ) -> std::string::String {
         let mut resolved = arg.to_string();
 
         // Determine game directory (instance-specific or default)
@@ -530,12 +516,11 @@ impl GameLauncher {
                 .to_string_lossy(),
         );
 
-        Ok(resolved)
+        resolved
     }
 
     /// Resolve legacy variable names
     fn resolve_legacy_variable(
-        &self,
         var_name: &str,
         auth: &AuthResult,
         minecraft_dir: &MinecraftDir,
@@ -561,12 +546,11 @@ impl GameLauncher {
 
     /// Add essential arguments that might be missing
     fn add_essential_arguments(
-        &self,
         cmd: &mut Command,
         auth: &AuthResult,
         minecraft_dir: &MinecraftDir,
         instance: Option<&InstanceConfig>,
-    ) -> Result<()> {
+    ) {
         // Determine game directory (instance-specific or default)
         let game_dir = if let Some(inst) = instance {
             minecraft_dir.base_path.join("instances").join(&inst.name)
@@ -587,12 +571,10 @@ impl GameLauncher {
             "--gameDir",
             &game_dir.to_string_lossy(),
         ]);
-
-        Ok(())
     }
 
     /// Evaluate rules for conditional arguments
-    fn evaluate_rules(&self, rules: &[crate::launcher::version::Rule]) -> Result<bool> {
+    fn evaluate_rules(rules: &[crate::launcher::version::Rule]) -> bool {
         for rule in rules {
             let matches = if let Some(os_rule) = &rule.os {
                 if let Some(name) = &os_rule.name {
@@ -610,9 +592,9 @@ impl GameLauncher {
             };
 
             if matches {
-                return Ok(rule.action == "allow");
+                return rule.action == "allow";
             }
         }
-        Ok(false)
+        false
     }
 }

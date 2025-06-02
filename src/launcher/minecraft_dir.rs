@@ -71,13 +71,13 @@ impl MinecraftDir {
     /// Get the path for a version's JAR file
     pub fn version_jar_path(&self, version_id: &str) -> PathBuf {
         self.version_dir(version_id)
-            .join(format!("{}.jar", version_id))
+            .join(format!("{version_id}.jar"))
     }
 
     /// Get the path for a version's JSON file
     pub fn version_json_path(&self, version_id: &str) -> PathBuf {
         self.version_dir(version_id)
-            .join(format!("{}.json", version_id))
+            .join(format!("{version_id}.json"))
     }
 
     /// Get the path for an asset by its hash
@@ -88,7 +88,7 @@ impl MinecraftDir {
 
     /// Get the path for an asset index file
     pub fn asset_index_path(&self, asset_id: &str) -> PathBuf {
-        self.assets_indexes_dir().join(format!("{}.json", asset_id))
+        self.assets_indexes_dir().join(format!("{asset_id}.json"))
     }
 
     /// Get the path for a library

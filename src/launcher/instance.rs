@@ -217,7 +217,7 @@ impl InstanceManager {
         // Add to memory
         self.instances.insert(name.clone(), config);
 
-        info!("Created instance: {} with game directories", name);
+        info!("Created instance: {name} with game directories");
         Ok(())
     }
 
@@ -238,7 +238,7 @@ impl InstanceManager {
         // Remove from memory
         self.instances.remove(name);
 
-        info!("Deleted instance: {}", name);
+        info!("Deleted instance: {name}");
         Ok(())
     }
 
@@ -275,7 +275,7 @@ impl InstanceManager {
             // Clone the config to avoid borrow checker issues
             let config_clone = config.clone();
             self.save_instance_config(&config_clone).await?;
-            info!("Set memory for instance '{}' to {}MB", name, memory_mb);
+            info!("Set memory for instance '{name}' to {memory_mb}MB");
         } else {
             return Err(anyhow::anyhow!("Instance '{}' does not exist", name));
         }
@@ -305,7 +305,7 @@ impl InstanceManager {
         for subdir in &subdirs {
             let path = instance_dir.join(subdir);
             std::fs::create_dir_all(&path)
-                .with_context(|| format!("Failed to create {} directory", subdir))?;
+                .with_context(|| format!("Failed to create {subdir} directory"))?;
         }
 
         // Create options.txt with basic settings if it doesn't exist

@@ -6,13 +6,12 @@ mod minecraft_dir;
 mod version;
 
 pub use files::{FileManager, get_library_path};
-pub use game::GameLauncher;
 pub use instance::{InstanceConfig, InstanceManager};
 pub use java::JavaManager;
 pub use minecraft_dir::MinecraftDir;
 pub use version::VersionType;
 
-use crate::auth::AuthResult;
+use crate::{auth::AuthResult, launcher};
 use anyhow::Result;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -20,7 +19,6 @@ use tokio::sync::Mutex;
 pub struct Launcher {
     pub minecraft_dir: MinecraftDir,
     pub file_manager: FileManager,
-    pub game_launcher: GameLauncher,
     pub java_manager: JavaManager,
     pub instance_manager: Arc<Mutex<InstanceManager>>,
 }
@@ -29,11 +27,10 @@ impl Launcher {
     pub async fn new() -> Result<Self> {
         let minecraft_dir = MinecraftDir::new()?;
         let file_manager = FileManager::new();
-        let game_launcher = GameLauncher::new();
         let mut java_manager = JavaManager::new();
 
         // Initialize Java manager
-        java_manager.initialize().await?;
+        java_manager.initialize();
 
         // Initialize instance manager with Arc<Mutex<>> for shared mutable access
         let instance_manager = Arc::new(Mutex::new(
@@ -43,7 +40,6 @@ impl Launcher {
         Ok(Self {
             minecraft_dir,
             file_manager,
-            game_launcher,
             java_manager,
             instance_manager,
         })
@@ -81,15 +77,7 @@ impl Launcher {
         instance: Option<&InstanceConfig>,
     ) -> Result<()> {
         let version_info = self.file_manager.get_version_info(version_id).await?;
-        self.game_launcher
-            .launch(
-                &version_info,
-                auth,
-                &self.minecraft_dir,
-                &self.java_manager,
-                instance,
-            )
-            .await
+        launcher::game::GameLauncher::launch(&version_info, auth, &self.minecraft_dir, &self.java_manager, instance)
     }
 }
 

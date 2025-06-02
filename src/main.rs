@@ -1,8 +1,13 @@
+#![warn(clippy::pedantic)]
+#![warn(clippy::unwrap_used)]
+#![warn(clippy::expect_used)]
+#![warn(dead_code)]
+
 mod auth;
 mod launcher;
 
 use clap::{Parser, Subcommand};
-use dotenv::dotenv;
+use dotenvy::dotenv;
 use env_logger::{Builder, Env};
 use log::{LevelFilter, error, info};
 use std::io::Write;
@@ -121,7 +126,7 @@ async fn main() -> anyhow::Result<()> {
     dotenv().ok();
 
     // Initialize the logger with custom format
-    setup_logger()?;
+    setup_logger();
 
     let cli = Cli::parse();
 
@@ -136,7 +141,7 @@ async fn main() -> anyhow::Result<()> {
             launcher
         }
         Err(e) => {
-            error!("Failed to initialize launcher: {}", e);
+            error!("Failed to initialize launcher: {e}");
             return Err(e);
         }
     };
@@ -164,7 +169,7 @@ async fn main() -> anyhow::Result<()> {
             handle_instance_command(&launcher, action).await?;
         }
         Commands::Java { action } => {
-            handle_java_command(&launcher, action).await?;
+            handle_java_command(&launcher, action);
         }
     }
 
@@ -211,10 +216,7 @@ async fn list_versions(
 async fn prepare_game(launcher: &launcher::Launcher, version: &str) -> anyhow::Result<()> {
     let resolved_version = resolve_version_alias(launcher, version).await?;
 
-    info!(
-        "Preparing Minecraft {} (no authentication required)...",
-        resolved_version
-    );
+    info!("Preparing Minecraft {resolved_version} (no authentication required)...");
 
     // Get version info and download files without authentication
     let version_info = launcher
@@ -245,7 +247,7 @@ async fn prepare_game(launcher: &launcher::Launcher, version: &str) -> anyhow::R
         .download_assets(&version_info, &launcher.minecraft_dir)
         .await?;
 
-    info!("✓ Minecraft {} prepared successfully", resolved_version);
+    info!("✓ Minecraft {resolved_version} prepared successfully");
     Ok(())
 }
 
@@ -277,10 +279,7 @@ async fn launch_game(
         instance_manager.update_last_used(instance_name).await?;
     }
 
-    info!(
-        "Launching Minecraft {} with instance '{}'...",
-        resolved_version, instance_name
-    );
+    info!("Launching Minecraft {resolved_version} with instance '{instance_name}'...");
 
     // Authenticate first
     info!("Starting authentication process...");
@@ -291,7 +290,7 @@ async fn launch_game(
             result
         }
         Err(e) => {
-            error!("Authentication failed: {}", e);
+            error!("Authentication failed: {e}");
             return Err(e);
         }
     };
@@ -304,7 +303,7 @@ async fn launch_game(
     info!("✓ Game files prepared successfully");
 
     // Launch the game
-    info!("Starting Minecraft {}...", resolved_version);
+    info!("Starting Minecraft {resolved_version}...");
 
     launcher
         .launch_game(&resolved_version, &auth_result, instance_config.as_ref())
@@ -394,7 +393,7 @@ async fn handle_instance_command(
                     let description = instance
                         .description
                         .as_ref()
-                        .map(|d| format!(" - {}", d))
+                        .map(|d| format!(" - {d}"))
                         .unwrap_or_default();
 
                     info!(
@@ -413,7 +412,7 @@ async fn handle_instance_command(
                 info!("Instance: {}", instance.name);
                 info!("  Version: {}", instance.version);
                 if let Some(desc) = &instance.description {
-                    info!("  Description: {}", desc);
+                    info!("  Description: {desc}");
                 }
                 info!(
                     "  Created: {}",
@@ -424,13 +423,13 @@ async fn handle_instance_command(
                 }
                 info!("  Mod loader: {:?}", instance.mods.loader);
                 if let Some(memory) = instance.settings.memory_mb {
-                    info!("  Memory: {}MB", memory);
+                    info!("  Memory: {memory}MB");
                 }
                 if !instance.settings.java_args.is_empty() {
                     info!("  Java args: {}", instance.settings.java_args.join(" "));
                 }
             } else {
-                error!("Instance '{}' does not exist", name);
+                error!("Instance '{name}' does not exist");
                 return Err(anyhow::anyhow!("Instance not found"));
             }
         }
@@ -443,45 +442,39 @@ async fn handle_instance_command(
             instance_manager
                 .create_instance(name.clone(), version, description)
                 .await?;
-            info!("✓ Created instance '{}'", name);
+            info!("✓ Created instance '{name}'");
         }
         InstanceCommands::Delete { name } => {
             let mut instance_manager = launcher.instance_manager.lock().await;
             instance_manager.delete_instance(&name).await?;
-            info!("✓ Deleted instance '{}'", name);
+            info!("✓ Deleted instance '{name}'");
         }
         InstanceCommands::Memory { name, memory } => {
             let mut instance_manager = launcher.instance_manager.lock().await;
             instance_manager.set_instance_memory(&name, memory).await?;
-            info!("✓ Set memory for instance '{}' to {}MB", name, memory);
+            info!("✓ Set memory for instance '{name}' to {memory}MB");
         }
     }
     Ok(())
 }
 
-async fn handle_java_command(
-    _launcher: &launcher::Launcher,
-    action: JavaCommands,
-) -> anyhow::Result<()> {
+fn handle_java_command(_launcher: &launcher::Launcher, action: JavaCommands) {
     match action {
         JavaCommands::List => {
+            // TODO: Implement Java installations listing
             info!("Java installations listing not yet implemented");
             info!("This feature is under development");
         }
         JavaCommands::Recommend { version } => {
-            info!(
-                "Getting recommended Java version for Minecraft {}...",
-                version
-            );
+            info!("Getting recommended Java version for Minecraft {version}...");
             let recommended = launcher::JavaManager::get_required_java_version(&version);
-            info!("Recommended Java version: {}", recommended);
+            info!("Recommended Java version: {recommended}");
         }
     }
-    Ok(())
 }
 
 /// Setup a custom logger with timestamps and colored output
-fn setup_logger() -> anyhow::Result<()> {
+fn setup_logger() {
     let env = Env::default().default_filter_or("info");
 
     Builder::from_env(env)
@@ -503,6 +496,4 @@ fn setup_logger() -> anyhow::Result<()> {
         })
         .filter(None, LevelFilter::Info)
         .init();
-
-    Ok(())
 }

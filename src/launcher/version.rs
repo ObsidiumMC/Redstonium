@@ -165,7 +165,7 @@ impl Library {
             let mut allowed = false; // Start with disallow by default if there are rules
 
             for rule in rules {
-                if self.rule_matches(rule) {
+                if Library::rule_matches(rule) {
                     allowed = rule.action == "allow";
                 }
             }
@@ -177,7 +177,7 @@ impl Library {
     }
 
     /// Check if a rule matches the current platform
-    fn rule_matches(&self, rule: &Rule) -> bool {
+    fn rule_matches(rule: &Rule) -> bool {
         if let Some(os_rule) = &rule.os {
             // Check OS name
             if let Some(name) = &os_rule.name {

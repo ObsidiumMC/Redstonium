@@ -52,7 +52,7 @@ pub async fn authenticate() -> Result<AuthResult> {
         .await
         .context("Failed to get Xbox Live token")?;
     info!("✓ Xbox Live authentication successful");
-    debug!("Retrieved user hash: {}", user_hash);
+    debug!("Retrieved user hash: {user_hash}");
 
     // Step 3: Get XSTS token using Xbox Live token
     info!("Starting XSTS authentication");
@@ -90,7 +90,7 @@ pub async fn authenticate() -> Result<AuthResult> {
 
     // Cache the authentication result for future use
     if let Err(e) = auth_storage.save_auth(&auth_result).await {
-        warn!("Failed to cache authentication: {}", e);
+        warn!("Failed to cache authentication: {e}");
         // Don't fail the authentication if caching fails
     }
 

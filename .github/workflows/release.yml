@@ -4,260 +4,64 @@ on:
   push:
     tags:
       - "v*"
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: "Release tag (e.g., v1.0.0)"
-        required: true
-        type: string
-
-env:
-  CARGO_TERM_COLOR: always
-  RUST_BACKTRACE: 1
 
 jobs:
-  # Create release and extract changelog
-  create-release:
-    name: Create Release
-    runs-on: ubuntu-latest
-    outputs:
-      release_id: ${{ steps.create_release.outputs.id }}
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-      tag_name: ${{ steps.get_tag.outputs.tag_name }}
-      changelog: ${{ steps.changelog.outputs.changelog }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Get tag name
-        id: get_tag
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tag_name=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
-          else
-            echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Extract changelog
-        id: changelog
-        run: |
-          TAG_NAME="${{ steps.get_tag.outputs.tag_name }}"
-          VERSION=${TAG_NAME#v}  # Remove 'v' prefix
-
-          echo "Extracting changelog for version $VERSION"
-
-          # Extract changelog section for this version
-          if grep -q "## \[$VERSION\]" CHANGELOG.md; then
-            # Extract content between this version and the next version marker
-            CHANGELOG=$(awk "/^## \[$VERSION\]/{flag=1; next} /^## \[/{flag=0} flag" CHANGELOG.md | sed '/^$/d' | head -50)
-            
-            if [ -z "$CHANGELOG" ]; then
-              CHANGELOG="### Changes
-              
-              - See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for full details"
-            fi
-          else
-            # If version not found in changelog, generate a basic one
-            CHANGELOG="### Changes
-            
-            This release includes various improvements and bug fixes.
-            
-            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for full details."
-          fi
-
-          # Save changelog to output (handle multiline)
-          echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGELOG" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Create Release
-        id: create_release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ steps.get_tag.outputs.tag_name }}
-          name: "Rustified ${{ steps.get_tag.outputs.tag_name }}"
-          body: |
-            A fast and modern Minecraft launcher built with Rust.
-
-            ${{ steps.changelog.outputs.changelog }}
-
-            ## Downloads
-
-            **Windows**: `rustified-${{ steps.get_tag.outputs.tag_name }}-windows.exe`  
-            **macOS Intel**: `rustified-${{ steps.get_tag.outputs.tag_name }}-macos-intel.tar.gz`  
-            **macOS Apple Silicon**: `rustified-${{ steps.get_tag.outputs.tag_name }}-macos-apple.tar.gz`  
-            **Linux**: `rustified-${{ steps.get_tag.outputs.tag_name }}-linux.tar.gz`
-
-            ## Installation
-
-            **Windows**: Download and run the `.exe` file  
-            **macOS/Linux**: Download the `.tar.gz`, extract with `tar -xzf rustified-*.tar.gz`, then run `./rustified`
-          draft: false
-          prerelease: ${{ contains(steps.get_tag.outputs.tag_name, '-') }}
-          generate_release_notes: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # Build for different platforms
   build:
-    name: Build ${{ matrix.target }}
-    needs: create-release
+    name: Build and Release
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
       matrix:
         include:
-          # Windows
           - target: x86_64-pc-windows-msvc
             os: windows-latest
             name: windows
             extension: .exe
-
-          # macOS Intel
           - target: x86_64-apple-darwin
             os: macos-latest
             name: macos-intel
             extension: ""
-
-          # macOS Apple Silicon
           - target: aarch64-apple-darwin
             os: macos-latest
             name: macos-apple
             extension: ""
-
-          # Linux
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
             name: linux
             extension: ""
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-
       - name: Install dependencies (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -y libssl-dev pkg-config
-
-      - name: Cache cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-release-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
-
       - name: Build release binary
-        run: |
-          cargo build --release --target ${{ matrix.target }}
-
+        run: cargo build --release --target ${{ matrix.target }}
       - name: Prepare release asset
+        id: prep
         shell: bash
         run: |
-          TAG_NAME="${{ needs.create-release.outputs.tag_name }}"
+          TAG_NAME=${GITHUB_REF#refs/tags/}
           BINARY_NAME="rustified${{ matrix.extension }}"
           RELEASE_NAME="rustified-$TAG_NAME-${{ matrix.name }}"
-
-          # Create release directory
           mkdir -p release
-
-          # Copy binary
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             cp "target/${{ matrix.target }}/release/${BINARY_NAME}" "release/${RELEASE_NAME}${{ matrix.extension }}"
+            echo "asset_path=release/${RELEASE_NAME}${{ matrix.extension }}" >> $GITHUB_OUTPUT
           else
             cp "target/${{ matrix.target }}/release/rustified" "release/${BINARY_NAME}"
-            
-            # Create tarball for Unix systems
             cd release
             tar -czf "${RELEASE_NAME}.tar.gz" "${BINARY_NAME}"
             rm "${BINARY_NAME}"
             cd ..
+            echo "asset_path=release/${RELEASE_NAME}.tar.gz" >> $GITHUB_OUTPUT
           fi
-
-          # Set asset name for upload
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            echo "ASSET_NAME=${RELEASE_NAME}${{ matrix.extension }}" >> $GITHUB_ENV
-            echo "ASSET_PATH=release/${RELEASE_NAME}${{ matrix.extension }}" >> $GITHUB_ENV
-          else
-            echo "ASSET_NAME=${RELEASE_NAME}.tar.gz" >> $GITHUB_ENV
-            echo "ASSET_PATH=release/${RELEASE_NAME}.tar.gz" >> $GITHUB_ENV
-          fi
-
-      - name: Upload release asset
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ needs.create-release.outputs.tag_name }}
-          files: ${{ env.ASSET_PATH }}
+          files: ${{ steps.prep.outputs.asset_path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload artifact (for debugging)
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.ASSET_NAME }}
-          path: ${{ env.ASSET_PATH }}
-
-  # Post-release verification
-  verify-release:
-    name: Verify Release
-    needs: [create-release, build]
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-      - name: Check release status
-        run: |
-          echo "Release created: ${{ needs.create-release.result }}"
-          echo "Build status: ${{ needs.build.result }}"
-
-          # Check if release was created successfully
-          if [ "${{ needs.create-release.result }}" != "success" ]; then
-            echo "❌ Release creation failed!"
-            exit 1
-          fi
-
-          # Check build results - allow some builds to fail but require at least one success
-          BUILD_RESULTS="${{ toJSON(needs.build.outputs) }}"
-          echo "Build results: $BUILD_RESULTS"
-
-          # If builds completed (success, failure, or cancelled), check if release creation was successful
-          if [ "${{ needs.build.result }}" != "success" ]; then
-            echo "⚠️  Some builds may have failed, but release was created"
-            echo "🔗 Release URL: https://github.com/${{ github.repository }}/releases/tag/${{ needs.create-release.outputs.tag_name }}"
-            echo "Please check individual build logs and manually upload any missing assets if needed"
-          else
-            echo "✅ Release ${{ needs.create-release.outputs.tag_name }} completed successfully!"
-            echo "🔗 Release URL: https://github.com/${{ github.repository }}/releases/tag/${{ needs.create-release.outputs.tag_name }}"
-          fi
-
-      - name: Release summary
-        run: |
-          echo "## 🚀 Release Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Tag:** ${{ needs.create-release.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Release Status:** ${{ needs.create-release.result == 'success' && '✅ Success' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Build Status:** ${{ needs.build.result == 'success' && '✅ All builds succeeded' || '⚠️ Some builds may have failed' }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📦 Target Platforms" >> $GITHUB_STEP_SUMMARY
-          echo "- Windows (x86_64)" >> $GITHUB_STEP_SUMMARY
-          echo "- macOS Intel (x86_64)" >> $GITHUB_STEP_SUMMARY
-          echo "- macOS Apple Silicon (aarch64)" >> $GITHUB_STEP_SUMMARY
-          echo "- Linux (x86_64)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 🔗 Links" >> $GITHUB_STEP_SUMMARY
-          echo "- [Release Page](https://github.com/${{ github.repository }}/releases/tag/${{ needs.create-release.outputs.tag_name }})" >> $GITHUB_STEP_SUMMARY
-          echo "- [Repository](https://github.com/${{ github.repository }})" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ needs.build.result }}" != "success" ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### ⚠️ Note" >> $GITHUB_STEP_SUMMARY
-            echo "Some builds may have failed. Please check the build logs and manually upload any missing release assets if needed." >> $GITHUB_STEP_SUMMARY
-          fi

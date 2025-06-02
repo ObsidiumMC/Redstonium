@@ -15,13 +15,12 @@ pub async fn get_minecraft_token(
     user_hash: &str,
 ) -> Result<String> {
     // Format the Xbox Live identity token for Minecraft
-    let identity_token = format!("XBL3.0 x={};{}", user_hash, xsts_token);
+    let identity_token = format!("XBL3.0 x={user_hash};{xsts_token}");
 
     let minecraft_request = MinecraftAuthRequest { identity_token };
 
     debug!(
-        "Sending authentication request to Minecraft services: {}",
-        MINECRAFT_AUTH_URL
+        "Sending authentication request to Minecraft services: {MINECRAFT_AUTH_URL}"
     );
     let response = client
         .post(MINECRAFT_AUTH_URL)
@@ -33,16 +32,15 @@ pub async fn get_minecraft_token(
         .context("Failed to send request to Minecraft authentication endpoint")?;
 
     let status = response.status();
-    debug!("Received response from Minecraft with status: {}", status);
+    debug!("Received response from Minecraft with status: {status}");
 
     if !status.is_success() {
         let error_text = response.text().await.unwrap_or_else(|e| {
-            error!("Failed to read error response body: {}", e);
+            error!("Failed to read error response body: {e}");
             "Unknown error".to_string()
         });
         error!(
-            "Minecraft authentication failed with status {}: {}",
-            status, error_text
+            "Minecraft authentication failed with status {status}: {error_text}"
         );
         return Err(anyhow::anyhow!(
             "Minecraft authentication failed: {} - {}",
@@ -70,28 +68,26 @@ pub async fn get_minecraft_token(
 
 /// Verify that the user owns Minecraft
 pub async fn verify_game_ownership(client: &Client, minecraft_token: &str) -> Result<()> {
-    debug!("Verifying game ownership at: {}", MINECRAFT_ENTITLEMENT_URL);
+    debug!("Verifying game ownership at: {MINECRAFT_ENTITLEMENT_URL}");
     let response = client
         .get(MINECRAFT_ENTITLEMENT_URL)
-        .header(AUTHORIZATION, format!("Bearer {}", minecraft_token))
+        .header(AUTHORIZATION, format!("Bearer {minecraft_token}"))
         .send()
         .await
         .context("Failed to send request to Minecraft entitlement endpoint")?;
 
     let status = response.status();
     debug!(
-        "Received response from Minecraft entitlement check with status: {}",
-        status
+        "Received response from Minecraft entitlement check with status: {status}"
     );
 
     if !status.is_success() {
         let error_text = response.text().await.unwrap_or_else(|e| {
-            error!("Failed to read error response body: {}", e);
+            error!("Failed to read error response body: {e}");
             "Unknown error".to_string()
         });
         error!(
-            "Failed to verify game ownership with status {}: {}",
-            status, error_text
+            "Failed to verify game ownership with status {status}: {error_text}"
         );
         return Err(anyhow::anyhow!(
             "Failed to verify game ownership: {} - {}",
@@ -105,7 +101,7 @@ pub async fn verify_game_ownership(client: &Client, minecraft_token: &str) -> Re
         .text()
         .await
         .context("Failed to read entitlement response body")?;
-    debug!("Got entitlements response: {}", body);
+    debug!("Got entitlements response: {body}");
 
     // If the response is empty or doesn't contain items, assume the user has the game
     // This is a workaround for differences in the API response format
@@ -126,20 +122,19 @@ pub async fn verify_game_ownership(client: &Client, minecraft_token: &str) -> Re
                     || item.name.contains("minecraft")
             });
 
-            if !has_game {
+            if has_game {
+                debug!("Found valid Minecraft entitlement");
+            } else {
                 warn!(
-                    "No Minecraft entitlement found in response: {:?}",
-                    entitlements
+                    "No Minecraft entitlement found in response: {entitlements:?}"
                 );
                 warn!("Warning: No Minecraft entitlement found, but proceeding anyway");
-            } else {
-                debug!("Found valid Minecraft entitlement");
             }
 
             Ok(())
         }
         Err(e) => {
-            warn!("Couldn't parse entitlement data: {}. Response: {}", e, body);
+            warn!("Couldn't parse entitlement data: {e}. Response: {body}");
             warn!("Warning: Couldn't parse entitlement data, proceeding anyway");
             // Continue anyway - we'll assume the user has the game
             Ok(())
@@ -153,30 +148,27 @@ pub async fn get_player_profile(
     minecraft_token: &str,
 ) -> Result<MinecraftProfile> {
     debug!(
-        "Retrieving Minecraft profile from: {}",
-        MINECRAFT_PROFILE_URL
+        "Retrieving Minecraft profile from: {MINECRAFT_PROFILE_URL}"
     );
     let response = client
         .get(MINECRAFT_PROFILE_URL)
-        .header(AUTHORIZATION, format!("Bearer {}", minecraft_token))
+        .header(AUTHORIZATION, format!("Bearer {minecraft_token}"))
         .send()
         .await
         .context("Failed to send request to Minecraft profile endpoint")?;
 
     let status = response.status();
     debug!(
-        "Received response from Minecraft profile endpoint with status: {}",
-        status
+        "Received response from Minecraft profile endpoint with status: {status}"
     );
 
     if !status.is_success() {
         let error_text = response.text().await.unwrap_or_else(|e| {
-            error!("Failed to read error response body: {}", e);
+            error!("Failed to read error response body: {e}");
             "Unknown error".to_string()
         });
         error!(
-            "Failed to get Minecraft profile with status {}: {}",
-            status, error_text
+            "Failed to get Minecraft profile with status {status}: {error_text}"
         );
         return Err(anyhow::anyhow!(
             "Failed to get Minecraft profile: {} - {}",
@@ -196,8 +188,8 @@ pub async fn get_player_profile(
     );
     trace!(
         "Profile has {} skins and {} capes",
-        profile.skins.as_ref().map_or(0, |s| s.len()),
-        profile.capes.as_ref().map_or(0, |c| c.len())
+        profile.skins.as_ref().map_or(0, std::vec::Vec::len),
+        profile.capes.as_ref().map_or(0, std::vec::Vec::len)
     );
 
     Ok(profile)

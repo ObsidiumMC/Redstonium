@@ -27,7 +27,7 @@ impl FileManager {
 
     /// Fetch the version manifest from Mojang
     pub async fn get_version_manifest(&self) -> Result<VersionManifest> {
-        info!("Fetching version manifest from {}", VERSION_MANIFEST_URL);
+        info!("Fetching version manifest from {VERSION_MANIFEST_URL}");
 
         let response = self
             .client
@@ -57,7 +57,7 @@ impl FileManager {
 
     /// Get version info for a specific version
     pub async fn get_version_info(&self, version_id: &str) -> Result<VersionInfo> {
-        info!("Getting version info for {}", version_id);
+        info!("Getting version info for {version_id}");
 
         // First get the version manifest to find the URL
         let manifest = self.get_version_manifest().await?;
@@ -75,7 +75,7 @@ impl FileManager {
             .get(&version_entry.url)
             .send()
             .await
-            .with_context(|| format!("Failed to fetch version info for {}", version_id))?;
+            .with_context(|| format!("Failed to fetch version info for {version_id}"))?;
 
         if !response.status().is_success() {
             return Err(anyhow!(
@@ -87,20 +87,19 @@ impl FileManager {
         let version_info: VersionInfo = response
             .json()
             .await
-            .with_context(|| format!("Failed to parse version info JSON for {}", version_id))?;
+            .with_context(|| format!("Failed to parse version info JSON for {version_id}"))?;
 
         // Check minimum launcher version if present
         if let Some(min_version) = version_info.minimum_launcher_version {
             const LAUNCHER_VERSION: u32 = 1; // Our launcher version
             if LAUNCHER_VERSION < min_version {
                 warn!(
-                    "This launcher version ({}) may be incompatible with Minecraft {} (requires version {})",
-                    LAUNCHER_VERSION, version_id, min_version
+                    "This launcher version ({LAUNCHER_VERSION}) may be incompatible with Minecraft {version_id} (requires version {min_version})"
                 );
             }
         }
 
-        info!("Successfully fetched version info for {}", version_id);
+        info!("Successfully fetched version info for {version_id}");
         Ok(version_info)
     }
 
@@ -122,10 +121,11 @@ impl FileManager {
             .with_context(|| format!("Failed to write version JSON to {}", json_path.display()))?;
 
         // Download JAR if not already present and valid
-        if !self
+        if self
             .is_file_valid(&jar_path, &version_info.downloads.client.sha1)
-            .await?
-        {
+            .await? {
+            info!("Game JAR already exists and is valid");
+        } else {
             info!("Downloading game JAR for {}", version_info.id);
 
             self.download_file_with_verification(
@@ -138,8 +138,6 @@ impl FileManager {
             .with_context(|| format!("Failed to download game JAR for {}", version_info.id))?;
 
             info!("✓ Game JAR downloaded successfully");
-        } else {
-            info!("Game JAR already exists and is valid");
         }
 
         Ok(())
@@ -166,157 +164,190 @@ impl FileManager {
 
             total_libraries += 1;
 
-            // Handle modern native libraries (separate entries)
             if library.is_native_library() {
-                if let Some(artifact) = &library.downloads.artifact {
-                    let lib_path = get_library_path(&library.name);
-                    let full_path = minecraft_dir.library_path(&lib_path);
+                downloaded_libraries += self.download_native_library(library, version_info, minecraft_dir).await?;
+                continue;
+            }
 
-                    if let Some(parent) = full_path.parent() {
-                        fs::create_dir_all(parent).await.with_context(|| {
-                            format!(
-                                "Failed to create native library directory: {}",
-                                parent.display()
-                            )
-                        })?;
-                    }
+            downloaded_libraries += self.download_regular_library(library, minecraft_dir).await?;
 
-                    if !self.is_file_valid(&full_path, &artifact.sha1).await? {
-                        debug!("Downloading native library: {}", library.name);
+            downloaded_libraries += self.download_legacy_native(library, version_info, minecraft_dir).await?;
+        }
 
-                        self.download_file_with_verification(
-                            &artifact.url,
-                            &full_path,
-                            &artifact.sha1,
-                            artifact.size,
-                        )
-                        .await
-                        .with_context(|| {
-                            format!("Failed to download native library: {}", library.name)
-                        })?;
+        info!(
+            "✓ Libraries processed: {downloaded_libraries} downloaded, {skipped_libraries} skipped, {total_libraries} total"
+        );
+        Ok(())
+    }
 
-                        // Extract natives from the JAR
-                        self.extract_natives(
-                            &full_path,
-                            &minecraft_dir.natives_dir(&version_info.id),
-                            library,
-                        )
+    // Helper for native libraries
+    async fn download_native_library(
+        &self,
+        library: &Library,
+        version_info: &VersionInfo,
+        minecraft_dir: &MinecraftDir,
+    ) -> Result<u32> {
+        if let Some(artifact) = &library.downloads.artifact {
+            let lib_path = get_library_path(&library.name);
+            let full_path = minecraft_dir.library_path(&lib_path);
+
+            if let Some(parent) = full_path.parent() {
+                fs::create_dir_all(parent).await.with_context(|| {
+                    format!(
+                        "Failed to create native library directory: {}",
+                        parent.display()
+                    )
+                })?;
+            }
+
+            if self.is_file_valid(&full_path, &artifact.sha1).await? {
+                debug!(
+                    "Native library {} already exists and is valid",
+                    library.name
+                );
+                // Still need to extract if natives directory doesn't exist
+                let natives_dir = minecraft_dir.natives_dir(&version_info.id);
+                if !natives_dir.exists() {
+                    self.extract_natives(&full_path, &natives_dir, library)
                         .await
                         .with_context(|| {
                             format!("Failed to extract natives from {}", library.name)
                         })?;
-
-                        downloaded_libraries += 1;
-                    } else {
-                        debug!(
-                            "Native library {} already exists and is valid",
-                            library.name
-                        );
-                        // Still need to extract if natives directory doesn't exist
-                        let natives_dir = minecraft_dir.natives_dir(&version_info.id);
-                        if !natives_dir.exists() {
-                            self.extract_natives(&full_path, &natives_dir, library)
-                                .await
-                                .with_context(|| {
-                                    format!("Failed to extract natives from {}", library.name)
-                                })?;
-                        }
-                    }
                 }
-                continue;
+                Ok(0)
+            } else {
+                debug!("Downloading native library: {}", library.name);
+
+                self.download_file_with_verification(
+                    &artifact.url,
+                    &full_path,
+                    &artifact.sha1,
+                    artifact.size,
+                )
+                .await
+                .with_context(|| {
+                    format!("Failed to download native library: {}", library.name)
+                })?;
+
+                // Extract natives from the JAR
+                self.extract_natives(
+                    &full_path,
+                    &minecraft_dir.natives_dir(&version_info.id),
+                    library,
+                )
+                .await
+                .with_context(|| {
+                    format!("Failed to extract natives from {}", library.name)
+                })?;
+
+                Ok(1)
+            }
+        } else {
+            Ok(0)
+        }
+    }
+
+    // Helper for regular libraries
+    async fn download_regular_library(
+        &self,
+        library: &Library,
+        minecraft_dir: &MinecraftDir,
+    ) -> Result<u32> {
+        if let Some(artifact) = &library.downloads.artifact {
+            let lib_path = get_library_path(&library.name);
+            let full_path = minecraft_dir.library_path(&lib_path);
+
+            if let Some(parent) = full_path.parent() {
+                fs::create_dir_all(parent).await.with_context(|| {
+                    format!("Failed to create library directory: {}", parent.display())
+                })?;
             }
 
-            // Download main artifact (regular libraries)
-            if let Some(artifact) = &library.downloads.artifact {
-                let lib_path = get_library_path(&library.name);
+            if self.is_file_valid(&full_path, &artifact.sha1).await? {
+                debug!("Library {} already exists and is valid", library.name);
+                Ok(0)
+            } else {
+                debug!("Downloading library: {}", library.name);
+
+                self.download_file_with_verification(
+                    &artifact.url,
+                    &full_path,
+                    &artifact.sha1,
+                    artifact.size,
+                )
+                .await
+                .with_context(|| format!("Failed to download library: {}", library.name))?;
+
+                Ok(1)
+            }
+        } else {
+            Ok(0)
+        }
+    }
+
+    // Helper for legacy natives
+    async fn download_legacy_native(
+        &self,
+        library: &Library,
+        version_info: &VersionInfo,
+        minecraft_dir: &MinecraftDir,
+    ) -> Result<u32> {
+        if let (Some(classifiers), Some(native_classifier)) = (
+            &library.downloads.classifiers,
+            library.get_native_classifier(),
+        ) {
+            if let Some(native_download) = classifiers.get(&native_classifier) {
+                let lib_path =
+                    get_library_path(&format!("{}:{}", library.name, native_classifier));
                 let full_path = minecraft_dir.library_path(&lib_path);
 
                 if let Some(parent) = full_path.parent() {
                     fs::create_dir_all(parent).await.with_context(|| {
-                        format!("Failed to create library directory: {}", parent.display())
+                        format!(
+                            "Failed to create native library directory: {}",
+                            parent.display()
+                        )
                     })?;
                 }
 
-                if !self.is_file_valid(&full_path, &artifact.sha1).await? {
-                    debug!("Downloading library: {}", library.name);
+                if !self
+                    .is_file_valid(&full_path, &native_download.sha1)
+                    .await?
+                {
+                    debug!(
+                        "Downloading legacy native library: {}-{}",
+                        library.name, native_classifier
+                    );
 
                     self.download_file_with_verification(
-                        &artifact.url,
+                        &native_download.url,
                         &full_path,
-                        &artifact.sha1,
-                        artifact.size,
+                        &native_download.sha1,
+                        native_download.size,
                     )
                     .await
-                    .with_context(|| format!("Failed to download library: {}", library.name))?;
-
-                    downloaded_libraries += 1;
-                } else {
-                    debug!("Library {} already exists and is valid", library.name);
-                }
-            }
-
-            // Download legacy natives if present (old format)
-            if let (Some(classifiers), Some(native_classifier)) = (
-                &library.downloads.classifiers,
-                library.get_native_classifier(),
-            ) {
-                if let Some(native_download) = classifiers.get(&native_classifier) {
-                    let lib_path =
-                        get_library_path(&format!("{}:{}", library.name, native_classifier));
-                    let full_path = minecraft_dir.library_path(&lib_path);
-
-                    if let Some(parent) = full_path.parent() {
-                        fs::create_dir_all(parent).await.with_context(|| {
-                            format!(
-                                "Failed to create native library directory: {}",
-                                parent.display()
-                            )
-                        })?;
-                    }
-
-                    if !self
-                        .is_file_valid(&full_path, &native_download.sha1)
-                        .await?
-                    {
-                        debug!(
-                            "Downloading legacy native library: {}-{}",
+                    .with_context(|| {
+                        format!(
+                            "Failed to download native library: {}-{}",
                             library.name, native_classifier
-                        );
-
-                        self.download_file_with_verification(
-                            &native_download.url,
-                            &full_path,
-                            &native_download.sha1,
-                            native_download.size,
                         )
-                        .await
-                        .with_context(|| {
-                            format!(
-                                "Failed to download native library: {}-{}",
-                                library.name, native_classifier
-                            )
-                        })?;
+                    })?;
 
-                        // Extract natives
-                        self.extract_natives(
-                            &full_path,
-                            &minecraft_dir.natives_dir(&version_info.id),
-                            library,
-                        )
-                        .await
-                        .with_context(|| {
-                            format!("Failed to extract natives from {}", library.name)
-                        })?;
-                    }
+                    // Extract natives
+                    self.extract_natives(
+                        &full_path,
+                        &minecraft_dir.natives_dir(&version_info.id),
+                        library,
+                    )
+                    .await
+                    .with_context(|| {
+                        format!("Failed to extract natives from {}", library.name)
+                    })?;
+                    return Ok(1);
                 }
             }
         }
-
-        info!(
-            "✓ Libraries processed: {} downloaded, {} skipped, {} total",
-            downloaded_libraries, skipped_libraries, total_libraries
-        );
-        Ok(())
+        Ok(0)
     }
 
     /// Download game assets with concurrent processing
@@ -325,6 +356,8 @@ impl FileManager {
         version_info: &VersionInfo,
         minecraft_dir: &MinecraftDir,
     ) -> Result<()> {
+        const BATCH_SIZE: usize = 50;
+        
         info!("Downloading assets for {}", version_info.id);
 
         // Download asset index
@@ -336,10 +369,11 @@ impl FileManager {
                 .context("Failed to create asset indexes directory")?;
         }
 
-        if !self
+        if self
             .is_file_valid(&asset_index_path, &version_info.asset_index.sha1)
-            .await?
-        {
+            .await? {
+            info!("Asset index already exists and is valid");
+        } else {
             info!("Downloading asset index: {}", version_info.asset_index.id);
 
             self.download_file_with_verification(
@@ -350,8 +384,6 @@ impl FileManager {
             )
             .await
             .context("Failed to download asset index")?;
-        } else {
-            info!("Asset index already exists and is valid");
         }
 
         // Parse asset index
@@ -365,12 +397,10 @@ impl FileManager {
         // Download individual assets with concurrency
         let total_assets = asset_manifest.objects.len();
         info!(
-            "Processing {} assets with concurrent downloads...",
-            total_assets
+            "Processing {total_assets} assets with concurrent downloads..."
         );
 
         // Process assets in batches to avoid overwhelming the server
-        const BATCH_SIZE: usize = 50;
         let mut downloaded_assets = 0;
         let mut skipped_assets = 0;
 
@@ -415,7 +445,7 @@ impl FileManager {
                         asset_object.size,
                     )
                     .await
-                    .with_context(|| format!("Failed to download asset: {}", asset_name))?;
+                    .with_context(|| format!("Failed to download asset: {asset_name}"))?;
 
                     Ok(true) // File was downloaded
                 }
@@ -429,7 +459,7 @@ impl FileManager {
                     Ok(true) => downloaded_assets += 1,
                     Ok(false) => skipped_assets += 1,
                     Err(e) => {
-                        warn!("Asset download failed: {}", e);
+                        warn!("Asset download failed: {e}");
                         // Continue with other assets instead of failing completely
                     }
                 }
@@ -438,13 +468,12 @@ impl FileManager {
             // Progress update
             let processed = downloaded_assets + skipped_assets;
             if processed % 100 == 0 || processed == total_assets {
-                info!("Asset progress: {}/{} processed", processed, total_assets);
+                info!("Asset progress: {processed}/{total_assets} processed");
             }
         }
 
         info!(
-            "✓ Assets processed: {} downloaded, {} skipped, {} total",
-            downloaded_assets, skipped_assets, total_assets
+            "✓ Assets processed: {downloaded_assets} downloaded, {skipped_assets} skipped, {total_assets} total"
         );
         Ok(())
     }
@@ -462,7 +491,7 @@ impl FileManager {
             .get(url)
             .send()
             .await
-            .with_context(|| format!("Failed to start download from {}", url))?;
+            .with_context(|| format!("Failed to start download from {url}"))?;
 
         if !response.status().is_success() {
             return Err(anyhow!("Download failed: HTTP {}", response.status()));
@@ -478,7 +507,7 @@ impl FileManager {
         let bytes = response
             .bytes()
             .await
-            .with_context(|| format!("Failed to read response from {}", url))?;
+            .with_context(|| format!("Failed to read response from {url}"))?;
 
         file.write_all(&bytes)
             .await
@@ -519,9 +548,8 @@ impl FileManager {
             return Ok(false);
         }
 
-        let content = match fs::read(path).await {
-            Ok(content) => content,
-            Err(_) => return Ok(false),
+        let Ok(content) = fs::read(path).await else {
+            return Ok(false);
         };
 
         let mut hasher = Sha1::new();
@@ -564,7 +592,7 @@ impl FileManager {
         for i in 0..archive.len() {
             let mut file = archive
                 .by_index(i)
-                .with_context(|| format!("Failed to read file at index {} from JAR", i))?;
+                .with_context(|| format!("Failed to read file at index {i} from JAR"))?;
 
             let file_path = file.name().to_string(); // Clone the path to avoid borrow issues
 
@@ -580,7 +608,7 @@ impl FileManager {
                         .iter()
                         .any(|pattern| file_path.contains(pattern))
                     {
-                        debug!("Excluding file {} from extraction", file_path);
+                        debug!("Excluding file {file_path} from extraction");
                         continue;
                     }
                 }
@@ -600,9 +628,9 @@ impl FileManager {
                 .with_context(|| format!("Failed to create file: {}", output_path.display()))?;
 
             std::io::copy(&mut file, &mut output_file)
-                .with_context(|| format!("Failed to extract file: {}", file_path))?;
+                .with_context(|| format!("Failed to extract file: {file_path}"))?;
 
-            debug!("Extracted: {}", file_path);
+            debug!("Extracted: {file_path}");
         }
 
         debug!("✓ Native extraction completed for {}", library.name);
@@ -624,8 +652,7 @@ pub fn get_library_path(library_name: &str) -> String {
         let classifier = parts[3];
 
         format!(
-            "{}/{}/{}/{}-{}-{}.jar",
-            group, name, version, name, version, classifier
+            "{group}/{name}/{version}/{name}-{version}-{classifier}.jar"
         )
     } else if parts.len() >= 3 {
         // Standard format (e.g., com.mojang:brigadier:1.0.18)
@@ -633,7 +660,7 @@ pub fn get_library_path(library_name: &str) -> String {
         let name = parts[1];
         let version = parts[2];
 
-        format!("{}/{}/{}/{}-{}.jar", group, name, version, name, version)
+        format!("{group}/{name}/{version}/{name}-{version}.jar")
     } else {
         // Fallback for malformed library names
         format!("{}.jar", library_name.replace(':', "/"))
