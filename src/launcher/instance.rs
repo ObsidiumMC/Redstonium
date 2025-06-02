@@ -204,7 +204,8 @@ impl InstanceManager {
         if name.len() > MAX_INSTANCE_NAME_LEN {
             return Err(anyhow::anyhow!(
                 "Instance name is too long ({} characters). Maximum allowed is {} characters.",
-                name.len(), MAX_INSTANCE_NAME_LEN
+                name.len(),
+                MAX_INSTANCE_NAME_LEN
             ));
         }
 
@@ -299,7 +300,8 @@ impl InstanceManager {
         if memory_mb > MAX_MEMORY_MB {
             return Err(anyhow::anyhow!(
                 "Memory value too large ({} MB). Maximum allowed is {} MB (128 GB)",
-                memory_mb, MAX_MEMORY_MB
+                memory_mb,
+                MAX_MEMORY_MB
             ));
         }
         if let Some(config) = self.instances.get_mut(name) {

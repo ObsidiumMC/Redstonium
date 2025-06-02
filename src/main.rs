@@ -274,11 +274,16 @@ async fn launch_game(
     let resolved_version = resolve_version_alias(launcher, &version).await?;
 
     // Validate Minecraft version before authentication
-    if let Err(e) = launcher.file_manager.get_version_info(&resolved_version).await {
+    if let Err(e) = launcher
+        .file_manager
+        .get_version_info(&resolved_version)
+        .await
+    {
         error!("Invalid Minecraft version: {resolved_version} : {e}");
         return Err(anyhow::anyhow!(
             "Instance '{}' uses an invalid Minecraft version ('{}'). Use 'rustified list' to see valid versions.",
-            instance_name, resolved_version
+            instance_name,
+            resolved_version
         ));
     }
 
