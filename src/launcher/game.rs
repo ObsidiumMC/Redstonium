@@ -43,7 +43,12 @@ impl GameLauncher {
         let mut cmd = Command::new(&java_installation.path);
 
         // Add JVM arguments (with instance-specific memory settings)
-        launcher::game::GameLauncher::add_jvm_arguments(&mut cmd, version_info, minecraft_dir, instance);
+        launcher::game::GameLauncher::add_jvm_arguments(
+            &mut cmd,
+            version_info,
+            minecraft_dir,
+            instance,
+        );
 
         // Add classpath
         launcher::game::GameLauncher::add_classpath(&mut cmd, version_info, minecraft_dir)?;
@@ -52,7 +57,13 @@ impl GameLauncher {
         cmd.arg(&version_info.main_class);
 
         // Add game arguments (with instance-specific game directory)
-        launcher::game::GameLauncher::add_game_arguments(&mut cmd, version_info, auth, minecraft_dir, instance)?;
+        launcher::game::GameLauncher::add_game_arguments(
+            &mut cmd,
+            version_info,
+            auth,
+            minecraft_dir,
+            instance,
+        )?;
 
         // Set working directory to the game directory
         cmd.current_dir(&game_dir);
@@ -140,7 +151,13 @@ impl GameLauncher {
         if let Some(arguments) = &version_info.arguments {
             if let Some(jvm_args) = &arguments.jvm {
                 for arg in jvm_args {
-                    launcher::game::GameLauncher::add_conditional_jvm_argument(cmd, arg, version_info, minecraft_dir, instance);
+                    launcher::game::GameLauncher::add_conditional_jvm_argument(
+                        cmd,
+                        arg,
+                        version_info,
+                        minecraft_dir,
+                        instance,
+                    );
                 }
             }
         }
@@ -249,7 +266,14 @@ impl GameLauncher {
         if let Some(arguments) = &version_info.arguments {
             if let Some(game_args) = &arguments.game {
                 for arg in game_args {
-                    launcher::game::GameLauncher::add_conditional_argument(cmd, arg, version_info, auth, minecraft_dir, instance);
+                    launcher::game::GameLauncher::add_conditional_argument(
+                        cmd,
+                        arg,
+                        version_info,
+                        auth,
+                        minecraft_dir,
+                        instance,
+                    );
                 }
             }
             // Modern versions have comprehensive arguments, so we don't need to add essential arguments

@@ -77,7 +77,13 @@ impl Launcher {
         instance: Option<&InstanceConfig>,
     ) -> Result<()> {
         let version_info = self.file_manager.get_version_info(version_id).await?;
-        launcher::game::GameLauncher::launch(&version_info, auth, &self.minecraft_dir, &self.java_manager, instance)
+        launcher::game::GameLauncher::launch(
+            &version_info,
+            auth,
+            &self.minecraft_dir,
+            &self.java_manager,
+            instance,
+        )
     }
 }
 

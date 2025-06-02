@@ -123,7 +123,8 @@ impl FileManager {
         // Download JAR if not already present and valid
         if self
             .is_file_valid(&jar_path, &version_info.downloads.client.sha1)
-            .await? {
+            .await?
+        {
             info!("Game JAR already exists and is valid");
         } else {
             info!("Downloading game JAR for {}", version_info.id);
@@ -165,13 +166,19 @@ impl FileManager {
             total_libraries += 1;
 
             if library.is_native_library() {
-                downloaded_libraries += self.download_native_library(library, version_info, minecraft_dir).await?;
+                downloaded_libraries += self
+                    .download_native_library(library, version_info, minecraft_dir)
+                    .await?;
                 continue;
             }
 
-            downloaded_libraries += self.download_regular_library(library, minecraft_dir).await?;
+            downloaded_libraries += self
+                .download_regular_library(library, minecraft_dir)
+                .await?;
 
-            downloaded_libraries += self.download_legacy_native(library, version_info, minecraft_dir).await?;
+            downloaded_libraries += self
+                .download_legacy_native(library, version_info, minecraft_dir)
+                .await?;
         }
 
         info!(
@@ -225,9 +232,7 @@ impl FileManager {
                     artifact.size,
                 )
                 .await
-                .with_context(|| {
-                    format!("Failed to download native library: {}", library.name)
-                })?;
+                .with_context(|| format!("Failed to download native library: {}", library.name))?;
 
                 // Extract natives from the JAR
                 self.extract_natives(
@@ -236,9 +241,7 @@ impl FileManager {
                     library,
                 )
                 .await
-                .with_context(|| {
-                    format!("Failed to extract natives from {}", library.name)
-                })?;
+                .with_context(|| format!("Failed to extract natives from {}", library.name))?;
 
                 Ok(1)
             }
@@ -297,8 +300,7 @@ impl FileManager {
             library.get_native_classifier(),
         ) {
             if let Some(native_download) = classifiers.get(&native_classifier) {
-                let lib_path =
-                    get_library_path(&format!("{}:{}", library.name, native_classifier));
+                let lib_path = get_library_path(&format!("{}:{}", library.name, native_classifier));
                 let full_path = minecraft_dir.library_path(&lib_path);
 
                 if let Some(parent) = full_path.parent() {
@@ -340,9 +342,7 @@ impl FileManager {
                         library,
                     )
                     .await
-                    .with_context(|| {
-                        format!("Failed to extract natives from {}", library.name)
-                    })?;
+                    .with_context(|| format!("Failed to extract natives from {}", library.name))?;
                     return Ok(1);
                 }
             }
@@ -357,7 +357,7 @@ impl FileManager {
         minecraft_dir: &MinecraftDir,
     ) -> Result<()> {
         const BATCH_SIZE: usize = 50;
-        
+
         info!("Downloading assets for {}", version_info.id);
 
         // Download asset index
@@ -371,7 +371,8 @@ impl FileManager {
 
         if self
             .is_file_valid(&asset_index_path, &version_info.asset_index.sha1)
-            .await? {
+            .await?
+        {
             info!("Asset index already exists and is valid");
         } else {
             info!("Downloading asset index: {}", version_info.asset_index.id);
@@ -396,9 +397,7 @@ impl FileManager {
 
         // Download individual assets with concurrency
         let total_assets = asset_manifest.objects.len();
-        info!(
-            "Processing {total_assets} assets with concurrent downloads..."
-        );
+        info!("Processing {total_assets} assets with concurrent downloads...");
 
         // Process assets in batches to avoid overwhelming the server
         let mut downloaded_assets = 0;
@@ -651,9 +650,7 @@ pub fn get_library_path(library_name: &str) -> String {
         let version = parts[2];
         let classifier = parts[3];
 
-        format!(
-            "{group}/{name}/{version}/{name}-{version}-{classifier}.jar"
-        )
+        format!("{group}/{name}/{version}/{name}-{version}-{classifier}.jar")
     } else if parts.len() >= 3 {
         // Standard format (e.g., com.mojang:brigadier:1.0.18)
         let group = parts[0].replace('.', "/");

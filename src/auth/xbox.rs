@@ -21,9 +21,7 @@ pub async fn get_xbox_live_token(client: &Client, ms_token: &str) -> Result<(Str
         token_type: "JWT".to_string(),
     };
 
-    debug!(
-        "Sending authentication request to Xbox Live: {XBL_AUTH_URL}"
-    );
+    debug!("Sending authentication request to Xbox Live: {XBL_AUTH_URL}");
     let response = client
         .post(XBL_AUTH_URL)
         .header(CONTENT_TYPE, "application/json")
@@ -41,9 +39,7 @@ pub async fn get_xbox_live_token(client: &Client, ms_token: &str) -> Result<(Str
             error!("Failed to read error response body: {e}");
             "Unknown error".to_string()
         });
-        error!(
-            "Xbox Live authentication failed with status {status}: {error_text}"
-        );
+        error!("Xbox Live authentication failed with status {status}: {error_text}");
         return Err(anyhow::anyhow!(
             "Xbox Live authentication failed: {} - {}",
             status,
@@ -56,7 +52,9 @@ pub async fn get_xbox_live_token(client: &Client, ms_token: &str) -> Result<(Str
         .await
         .context("Failed to parse Xbox Live response as JSON")?;
 
-    let user_hash = if let Some(info) = xbl_response.display_claims.xui.first() { info.uhs.clone() } else {
+    let user_hash = if let Some(info) = xbl_response.display_claims.xui.first() {
+        info.uhs.clone()
+    } else {
         error!("No Xbox User Hash found in response");
         return Err(anyhow::anyhow!("No Xbox User Hash found in response"));
     };
@@ -120,9 +118,7 @@ pub async fn get_xsts_token(client: &Client, xbl_token: &str) -> Result<String> 
             }
         }
 
-        error!(
-            "XSTS authentication failed with status {status}: {error_text}"
-        );
+        error!("XSTS authentication failed with status {status}: {error_text}");
         return Err(anyhow::anyhow!(
             "XSTS authentication failed: {} - {}",
             status,

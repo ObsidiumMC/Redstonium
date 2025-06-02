@@ -128,7 +128,9 @@ impl JavaManager {
                 "java"
             });
 
-            if let Ok(installation) = launcher::java::JavaManager::probe_java_installation(&java_path) {
+            if let Ok(installation) =
+                launcher::java::JavaManager::probe_java_installation(&java_path)
+            {
                 debug!("Found Java via JAVA_HOME: {}", installation.path.display());
                 self.installations
                     .insert(installation.major_version, installation);
@@ -137,7 +139,9 @@ impl JavaManager {
 
         // Check system PATH
         let java_executable = if cfg!(windows) { "java.exe" } else { "java" };
-        if let Ok(installation) = launcher::java::JavaManager::probe_java_installation_by_name(java_executable) {
+        if let Ok(installation) =
+            launcher::java::JavaManager::probe_java_installation_by_name(java_executable)
+        {
             if let std::collections::hash_map::Entry::Vacant(e) =
                 self.installations.entry(installation.major_version)
             {
@@ -179,7 +183,9 @@ impl JavaManager {
                             "java"
                         });
 
-                        if let Ok(installation) = launcher::java::JavaManager::probe_java_installation(&java_path) {
+                        if let Ok(installation) =
+                            launcher::java::JavaManager::probe_java_installation(&java_path)
+                        {
                             if let std::collections::hash_map::Entry::Vacant(e) =
                                 self.installations.entry(installation.major_version)
                             {
@@ -215,7 +221,9 @@ impl JavaManager {
                     let java_home = String::from_utf8_lossy(&output.stdout).trim().to_string();
                     let java_path = PathBuf::from(java_home).join("bin").join("java");
 
-                    if let Ok(installation) = launcher::java::JavaManager::probe_java_installation(&java_path) {
+                    if let Ok(installation) =
+                        launcher::java::JavaManager::probe_java_installation(&java_path)
+                    {
                         if let std::collections::hash_map::Entry::Vacant(e) =
                             self.installations.entry(installation.major_version)
                         {

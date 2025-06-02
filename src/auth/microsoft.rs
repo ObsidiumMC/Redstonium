@@ -1,9 +1,6 @@
 use anyhow::{Context, Result, anyhow};
 use log::{debug, error, info, trace, warn};
-use oauth2::{
-    AuthUrl, ClientId, CsrfToken, RedirectUrl, Scope, TokenUrl,
-    basic::BasicClient,
-};
+use oauth2::{AuthUrl, ClientId, CsrfToken, RedirectUrl, Scope, TokenUrl, basic::BasicClient};
 use std::env;
 use tokio::sync::oneshot;
 use tokio::task;
@@ -12,11 +9,11 @@ use super::constants::{MS_AUTH_URL, MS_TOKEN_URL, REDIRECT_URI};
 
 /// Starts a local server to receive the OAuth redirect and extract the code
 fn start_local_server(tx: tokio::sync::oneshot::Sender<Result<String>>) {
+    use anyhow::anyhow;
+    use log::{debug, error, info, warn};
     use std::net::SocketAddr;
     use tiny_http::{Response, Server};
     use url::Url;
-    use log::{debug, error, info, warn};
-    use anyhow::anyhow;
 
     let addr: SocketAddr = match "127.0.0.1:8080".parse() {
         Ok(a) => a,
@@ -66,8 +63,8 @@ fn start_local_server(tx: tokio::sync::oneshot::Sender<Result<String>>) {
                         "Authentication successful! You can close this window.".to_string();
                     let _ = tx.send(Ok(code));
                 } else if let Some(error) = error {
-                    let description = error_description
-                        .unwrap_or_else(|| "No description provided.".to_string());
+                    let description =
+                        error_description.unwrap_or_else(|| "No description provided.".to_string());
                     error!("OAuth error received: {error} - {description}");
                     response_text = format!(
                         "Authentication failed: {error} - {description}. Please close this window."
@@ -81,8 +78,7 @@ fn start_local_server(tx: tokio::sync::oneshot::Sender<Result<String>>) {
                 }
             } else {
                 error!("Failed to parse redirect URL: {url_str}");
-                response_text =
-                    "Error processing request. Please close this window.".to_string();
+                response_text = "Error processing request. Please close this window.".to_string();
                 let _ = tx.send(Err(anyhow!("Failed to parse redirect URL")));
             }
 
@@ -105,8 +101,8 @@ async fn exchange_code_for_token(
     oauth_client: &oauth2::basic::BasicClient,
     code: String,
 ) -> Result<String> {
-    use oauth2::{AuthorizationCode, TokenResponse};
     use anyhow::Context;
+    use oauth2::{AuthorizationCode, TokenResponse};
     let token_result = oauth_client
         .exchange_code(AuthorizationCode::new(code))
         .request_async(oauth2::reqwest::async_http_client)
@@ -177,9 +173,6 @@ pub async fn get_microsoft_token() -> Result<String> {
     // Exchange authorization code for access token
     let token = exchange_code_for_token(&oauth_client, code).await?;
     debug!("Successfully received access token");
-    trace!(
-        "Access token length: {}",
-        token.len()
-    );
+    trace!("Access token length: {}", token.len());
     Ok(token)
 }

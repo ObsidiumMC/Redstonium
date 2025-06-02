@@ -19,9 +19,7 @@ pub async fn get_minecraft_token(
 
     let minecraft_request = MinecraftAuthRequest { identity_token };
 
-    debug!(
-        "Sending authentication request to Minecraft services: {MINECRAFT_AUTH_URL}"
-    );
+    debug!("Sending authentication request to Minecraft services: {MINECRAFT_AUTH_URL}");
     let response = client
         .post(MINECRAFT_AUTH_URL)
         .header(CONTENT_TYPE, "application/json")
@@ -39,9 +37,7 @@ pub async fn get_minecraft_token(
             error!("Failed to read error response body: {e}");
             "Unknown error".to_string()
         });
-        error!(
-            "Minecraft authentication failed with status {status}: {error_text}"
-        );
+        error!("Minecraft authentication failed with status {status}: {error_text}");
         return Err(anyhow::anyhow!(
             "Minecraft authentication failed: {} - {}",
             status,
@@ -77,18 +73,14 @@ pub async fn verify_game_ownership(client: &Client, minecraft_token: &str) -> Re
         .context("Failed to send request to Minecraft entitlement endpoint")?;
 
     let status = response.status();
-    debug!(
-        "Received response from Minecraft entitlement check with status: {status}"
-    );
+    debug!("Received response from Minecraft entitlement check with status: {status}");
 
     if !status.is_success() {
         let error_text = response.text().await.unwrap_or_else(|e| {
             error!("Failed to read error response body: {e}");
             "Unknown error".to_string()
         });
-        error!(
-            "Failed to verify game ownership with status {status}: {error_text}"
-        );
+        error!("Failed to verify game ownership with status {status}: {error_text}");
         return Err(anyhow::anyhow!(
             "Failed to verify game ownership: {} - {}",
             status,
@@ -125,9 +117,7 @@ pub async fn verify_game_ownership(client: &Client, minecraft_token: &str) -> Re
             if has_game {
                 debug!("Found valid Minecraft entitlement");
             } else {
-                warn!(
-                    "No Minecraft entitlement found in response: {entitlements:?}"
-                );
+                warn!("No Minecraft entitlement found in response: {entitlements:?}");
                 warn!("Warning: No Minecraft entitlement found, but proceeding anyway");
             }
 
@@ -147,9 +137,7 @@ pub async fn get_player_profile(
     client: &Client,
     minecraft_token: &str,
 ) -> Result<MinecraftProfile> {
-    debug!(
-        "Retrieving Minecraft profile from: {MINECRAFT_PROFILE_URL}"
-    );
+    debug!("Retrieving Minecraft profile from: {MINECRAFT_PROFILE_URL}");
     let response = client
         .get(MINECRAFT_PROFILE_URL)
         .header(AUTHORIZATION, format!("Bearer {minecraft_token}"))
@@ -158,18 +146,14 @@ pub async fn get_player_profile(
         .context("Failed to send request to Minecraft profile endpoint")?;
 
     let status = response.status();
-    debug!(
-        "Received response from Minecraft profile endpoint with status: {status}"
-    );
+    debug!("Received response from Minecraft profile endpoint with status: {status}");
 
     if !status.is_success() {
         let error_text = response.text().await.unwrap_or_else(|e| {
             error!("Failed to read error response body: {e}");
             "Unknown error".to_string()
         });
-        error!(
-            "Failed to get Minecraft profile with status {status}: {error_text}"
-        );
+        error!("Failed to get Minecraft profile with status {status}: {error_text}");
         return Err(anyhow::anyhow!(
             "Failed to get Minecraft profile: {} - {}",
             status,
