@@ -667,3 +667,9 @@ pub fn get_library_path(library_name: &str) -> String {
 // Add these additional dependencies to Cargo.toml:
 // futures-util = "0.3"
 // sha1 = "0.10"
+
+impl Default for FileManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}

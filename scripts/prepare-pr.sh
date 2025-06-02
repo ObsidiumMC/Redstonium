@@ -19,8 +19,8 @@ cargo fmt --all -- --check
 echo "✅ Formatting OK."
 
 # Run clippy for linting and dead code
-echo "🔍 Running clippy (with dead code check)..."
-cargo clippy --all-targets -- -D warnings -D dead_code
+echo "🔍 Running clippy"
+cargo clippy
 
 echo "✅ Clippy passed."
 

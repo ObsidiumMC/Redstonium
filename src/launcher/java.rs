@@ -387,6 +387,12 @@ fn parse_minecraft_version(version: &str) -> Option<(u32, u32)> {
     None
 }
 
+impl Default for JavaManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
