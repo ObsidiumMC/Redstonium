@@ -1,7 +1,6 @@
 use anyhow::{Context, Result, anyhow};
 use log::{debug, error, info, trace, warn};
 use oauth2::{AuthUrl, ClientId, CsrfToken, RedirectUrl, Scope, TokenUrl, basic::BasicClient};
-use std::env;
 use tokio::sync::oneshot;
 use tokio::task;
 
@@ -113,9 +112,7 @@ async fn exchange_code_for_token(
 
 /// Get a Microsoft OAuth token using the authorization code flow with a local server
 pub async fn get_microsoft_token() -> Result<String> {
-    let client_id = env::var("MS_CLIENT_ID").context(
-        "MS_CLIENT_ID environment variable not set. Make sure .env file is present and loaded.",
-    )?;
+    let client_id = String::from("74ab16e9-5151-4478-8184-e590ba53d01d");
 
     debug!("Creating OAuth client with client ID: {client_id}");
 

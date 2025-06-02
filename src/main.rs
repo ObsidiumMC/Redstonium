@@ -273,6 +273,15 @@ async fn launch_game(
 
     let resolved_version = resolve_version_alias(launcher, &version).await?;
 
+    // Validate Minecraft version before authentication
+    if let Err(e) = launcher.file_manager.get_version_info(&resolved_version).await {
+        error!("Invalid Minecraft version: {resolved_version} : {e}");
+        return Err(anyhow::anyhow!(
+            "Instance '{}' uses an invalid Minecraft version ('{}'). Use 'rustified list' to see valid versions.",
+            instance_name, resolved_version
+        ));
+    }
+
     // Update last used timestamp
     {
         let mut instance_manager = launcher.instance_manager.lock().await;
@@ -440,7 +449,7 @@ async fn handle_instance_command(
         } => {
             let mut instance_manager = launcher.instance_manager.lock().await;
             instance_manager
-                .create_instance(name.clone(), version, description)
+                .create_instance(name.clone(), version, description, &launcher.file_manager)
                 .await?;
             info!("✓ Created instance '{name}'");
         }
@@ -458,12 +467,18 @@ async fn handle_instance_command(
     Ok(())
 }
 
-fn handle_java_command(_launcher: &launcher::Launcher, action: JavaCommands) {
+fn handle_java_command(launcher: &launcher::Launcher, action: JavaCommands) {
     match action {
         JavaCommands::List => {
-            // TODO: Implement Java installations listing
-            info!("Java installations listing not yet implemented");
-            info!("This feature is under development");
+            let installations = &launcher.java_manager.installations;
+            if installations.is_empty() {
+                info!("No Java installations found. Try installing Java or setting JAVA_HOME.");
+            } else {
+                info!("Found {} Java installation(s):", installations.len());
+                for (major, installation) in installations {
+                    info!("  Java {}: {}", major, installation.path.display());
+                }
+            }
         }
         JavaCommands::Recommend { version } => {
             info!("Getting recommended Java version for Minecraft {version}...");

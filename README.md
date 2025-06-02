@@ -1,107 +1,256 @@
 # Rustified
 
-[![CI](https://github.com/OmarAfet/rustified/actions/workflows/ci.yml/badge.svg)](https://github.com/OmarAfet/rustified/actions)
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![CI](https://github.com/OmarAfet/rustified/workflows/CI/badge.svg)](https://github.com/OmarAfet/rustified/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Rust](https://img.shields.io/badge/Rust-2024-orange.svg)](https://www.rust-lang.org/)
+[![Minecraft](https://img.shields.io/badge/Minecraft-Java%20Edition-green.svg)](https://www.minecraft.net/)
 
-A fast and modern Minecraft CLI launcher built with Rust. Rustified provides a robust, cross-platform alternative to graphical launchers, supporting advanced instance management, Microsoft authentication, and seamless integration into scripts and automation workflows.
+A powerful, cross-platform command-line Minecraft launcher written in Rust. Rustified provides a fast, reliable, and automation-friendly alternative to the official Minecraft launcher, with support for multiple instances, mod management, and advanced configuration options.
 
----
+## Features
 
-## ✨ Features
-- **Instance-based launching**: Manage multiple Minecraft instances with isolated configs
-- **Microsoft/Xbox Live authentication**: Secure OAuth 2.0 device flow
-- **Automatic download**: Handles Minecraft versions, libraries, and assets
-- **Java runtime management**: Detects and recommends correct Java version per instance
-- **Cross-platform**: Works on Windows, macOS, and Linux
-- **CLI-first**: Scriptable, fast, and minimal dependencies
-- **Dead code policy**: CI and pre-commit hooks enforce zero dead code
+### Core Functionality
+- **Cross-platform support** (Windows, macOS, Linux)
+- **Microsoft Account authentication** with OAuth 2.0
+- **Multiple Minecraft versions** (releases, snapshots, and legacy versions)
+- **Instance management** for isolated game environments
+- **Automatic Java detection** and version matching
+- **Parallel file downloads** with integrity verification
+- **Mod loader support** (Vanilla, Forge, Fabric, Quilt)
 
-## 🚀 Quick Start
+### Game Management
+- **Version preparation** without launching
+- **Asset and library management** with content-addressable storage
+- **Memory allocation** per instance
+- **Custom Java arguments** and game parameters
+- **Server quick-connect** configuration
+- **Saves and resource pack isolation**
+
+### Developer Features
+- **CLI-first design** perfect for automation and scripting
+- **Detailed logging** with configurable levels
+- **JSON-based configuration** for easy integration
+- **Secure credential storage** with platform-specific keychains
+- **Fast startup** with cached authentication
+
+## Installation
 
 ### Prerequisites
-- Rust 1.70+ ([Install Rust](https://rustup.rs/))
-- Java (see below for version requirements)
-- Git
+- **Rust** (2024 edition) - [Install Rust](https://rustup.rs/)
+- **Java** 8, 11, 16, 17, or 21 (depending on Minecraft version)
+- **Microsoft account** with Minecraft Java Edition
 
-### Build from Source
+### From Source
 ```bash
 git clone https://github.com/OmarAfet/rustified.git
 cd rustified
 cargo build --release
 ```
-The binary will be at `target/release/rustified`.
 
-### Or Download Prebuilt Binaries
-See [Releases](https://github.com/OmarAfet/rustified/releases) for Windows, macOS, and Linux builds.
+The executable will be available at `target/release/rustified`.
 
-## 🕹️ Usage
+### Environment Setup
+No environment setup required for Microsoft authentication. The Microsoft client ID is now included in the codebase.
 
+## Quick Start
+
+### 1. List Available Minecraft Versions
 ```bash
-./rustified --help
+rustified list --limit 20
+rustified list --releases-only
 ```
 
-**Main commands:**
-- `list` — List available Minecraft versions
-- `launch <instance>` — Launch a Minecraft instance
-- `prepare <version>` — Download a version without launching
-- `auth <status|clear|refresh>` — Manage authentication
-- `instance <list|create|delete|info|memory>` — Manage instances
-- `java <list|recommend>` — Java runtime management
-
-**Examples:**
+### 2. Create Your First Instance
 ```bash
-# List latest 10 versions
-./rustified list
-
-# Launch an instance
-./rustified launch my-instance
-
-# Authenticate with Microsoft
-./rustified auth status
-
-# Create a new instance
-./rustified instance create my-instance 1.21.5 --description "My modded setup"
-
-# Show recommended Java version for Minecraft 1.21.5
-./rustified java recommend 1.21.5
+rustified instance create my-world 1.20.4 --description "My survival world"
 ```
 
-## 🛠️ Development
+### 3. Launch Minecraft
+```bash
+rustified launch my-world
+```
 
-- **Setup:**
-  ```bash
-  scripts/setup-dev.sh
-  # or
-  just setup
-  ```
-- **Run all checks:** `just check-all` or manually:
-  ```bash
-  cargo fmt --all -- --check
-  cargo clippy --all-targets -- -D warnings -D dead_code
-  cargo test
-  ```
-- **Pre-commit hooks:** Installed by setup script for code formatting and dead code checks
-- **Test:** `cargo test` (see `tests/integration_tests.rs`)
-- **Coverage:** `cargo tarpaulin --out Html` (requires [cargo-tarpaulin](https://github.com/xd009642/tarpaulin))
+### 4. Prepare a Version (Download Only)
+```bash
+rustified prepare 1.21
+```
 
-## 🧩 Architecture
-- Modular: `auth/`, `launcher/`, and submodules for each concern
-- Async: Uses `tokio` and `reqwest` for fast downloads and authentication
-- Strict linting: CI and local checks enforce code quality
-- See [GUIDE.md](GUIDE.md) for a deep-dive into technical design
+## Usage
 
-## 📝 Contributing
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines, code style, and workflow. PRs welcome!
+### Instance Management
 
-## 📜 License
-MIT © 2025 OmarAfet
+#### Create a new instance
+```bash
+rustified instance create <name> <version> [--description "Optional description"]
+```
 
-## 📚 Resources
-- [Technical Guide](GUIDE.md)
-- [Changelog](CHANGELOG.md)
-- [Rust Book](https://doc.rust-lang.org/book/)
-- [Minecraft Wiki](https://minecraft.wiki/w/Minecraft_Launcher)
+#### List all instances
+```bash
+rustified instance list
+```
 
----
+#### Get instance details
+```bash
+rustified instance info <name>
+```
 
-*Rustified is not affiliated with Mojang, Microsoft, or Minecraft. Minecraft is a trademark of Mojang AB and Microsoft.*
+#### Delete an instance
+```bash
+rustified instance delete <name>
+```
+
+#### Set memory allocation
+```bash
+rustified instance memory <name> <memory_mb>
+```
+
+### Authentication
+
+#### Check authentication status
+```bash
+rustified auth status
+```
+
+#### Clear cached credentials
+```bash
+rustified auth clear
+```
+
+#### Force re-authentication
+```bash
+rustified auth refresh
+```
+
+### Java Management
+
+#### List detected Java installations
+```bash
+rustified java list
+```
+
+#### Check recommended Java version
+```bash
+rustified java recommend 1.20.4
+```
+
+## Configuration
+
+### Instance Configuration
+Each instance is stored as a JSON file in `.minecraft/instances/<name>/instance.json`:
+
+```json
+{
+  "name": "my-world",
+  "version": "1.20.4",
+  "description": "My survival world",
+  "created": "2025-01-01T12:00:00Z",
+  "last_used": "2025-01-02T08:30:00Z",
+  "settings": {
+    "memory_mb": 4096,
+    "java_args": ["-XX:+UseG1GC"],
+    "game_args": [],
+    "debug": false,
+    "server": {
+      "address": "mc.hypixel.net",
+      "port": 25565
+    }
+  },
+  "mods": {
+    "loader": "fabric",
+    "loader_version": "0.15.6",
+    "mods": []
+  }
+}
+```
+
+### Directory Structure
+```
+.minecraft/
+├── instances/           # Instance-specific directories
+│   └── my-world/
+│       ├── instance.json
+│       ├── saves/
+│       ├── resourcepacks/
+│       └── screenshots/
+├── versions/            # Minecraft version files
+├── libraries/           # Java libraries
+├── assets/             # Game assets
+└── launcher_profiles.json
+```
+
+## Architecture
+
+### Core Components
+
+- **`launcher/`** - Main launcher logic and game execution
+- **`auth/`** - Microsoft OAuth 2.0 authentication flow
+- **`files/`** - Download management and file verification
+- **`instance/`** - Instance configuration and management
+- **`java/`** - Java detection and version matching
+
+### Authentication Flow
+
+1. **Microsoft OAuth 2.0** - Initial authentication with Microsoft services
+2. **Xbox Live** - Token exchange for Xbox Live authentication
+3. **XSTS** - Xbox Security Token Service authentication
+4. **Minecraft Services** - Final token exchange for Minecraft access
+5. **Profile Retrieval** - Fetch player profile and game ownership
+
+### Java Version Requirements
+
+| Minecraft Version | Required Java |
+|------------------|---------------|
+| ≤ 1.15           | Java 8        |
+| 1.16             | Java 8/11     |
+| 1.17             | Java 16       |
+| 1.18-1.20        | Java 17       |
+| 1.21+            | Java 21       |
+
+## Development
+
+### Building
+```bash
+cargo build
+```
+
+### Running Tests
+```bash
+cargo test
+```
+
+### Code Style
+```bash
+cargo fmt
+```
+
+### Prepare for Pull Request
+Run the following script to check formatting, linting, and tests before submitting a PR:
+```bash
+./scripts/prepare-pr.sh
+```
+
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+### Development Setup
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run `./scripts/prepare-pr.sh` to ensure your branch is ready
+5. Submit a pull request
+
+## Security
+
+- Credentials are stored securely using platform-specific keychains
+- OAuth 2.0 flow with proper token refresh handling
+- File integrity verification using SHA1 checksums
+- No hardcoded secrets or credentials
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Disclaimer
+
+This project is not affiliated with Mojang Studios or Microsoft. Minecraft is a trademark of Mojang Studios.

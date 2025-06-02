@@ -7,6 +7,8 @@ use tokio::fs;
 
 use crate::launcher::minecraft_dir::MinecraftDir;
 
+const MAX_INSTANCE_NAME_LEN: usize = 64;
+
 /// Configuration for a Minecraft instance
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InstanceConfig {
@@ -175,12 +177,13 @@ impl InstanceManager {
         Ok(())
     }
 
-    /// Create a new instance
+    /// Create a new instance (with version validation)
     pub async fn create_instance(
         &mut self,
         name: String,
         version: String,
         description: Option<String>,
+        file_manager: &crate::launcher::FileManager,
     ) -> Result<()> {
         // Check if instance already exists
         if self.instances.contains_key(&name) {
@@ -194,6 +197,24 @@ impl InstanceManager {
         {
             return Err(anyhow::anyhow!(
                 "Instance name can only contain letters, numbers, hyphens, and underscores"
+            ));
+        }
+
+        // Enforce a maximum instance name length (e.g., 64 chars)
+        if name.len() > MAX_INSTANCE_NAME_LEN {
+            return Err(anyhow::anyhow!(
+                "Instance name is too long ({} characters). Maximum allowed is {} characters.",
+                name.len(), MAX_INSTANCE_NAME_LEN
+            ));
+        }
+
+        // Validate version exists in manifest
+        let manifest = file_manager.get_version_manifest().await?;
+        let valid_version = manifest.versions.iter().any(|v| v.id == version);
+        if !valid_version {
+            return Err(anyhow::anyhow!(
+                "Minecraft version '{}' does not exist. Use 'rustified list' to see valid versions.",
+                version
             ));
         }
 
@@ -270,6 +291,17 @@ impl InstanceManager {
 
     /// Set instance memory allocation
     pub async fn set_instance_memory(&mut self, name: &str, memory_mb: u32) -> Result<()> {
+        // Set a reasonable upper bound for memory (e.g., 128 GB)
+        const MAX_MEMORY_MB: u32 = 128 * 1024; // 131072 MB
+        if memory_mb == 0 {
+            return Err(anyhow::anyhow!("Memory must be greater than 0 MB"));
+        }
+        if memory_mb > MAX_MEMORY_MB {
+            return Err(anyhow::anyhow!(
+                "Memory value too large ({} MB). Maximum allowed is {} MB (128 GB)",
+                memory_mb, MAX_MEMORY_MB
+            ));
+        }
         if let Some(config) = self.instances.get_mut(name) {
             config.settings.memory_mb = Some(memory_mb);
             // Clone the config to avoid borrow checker issues
