@@ -6,7 +6,7 @@ use log::info;
 /// # Errors
 ///
 /// Returns an error if authentication storage operations fail or if authentication fails.
-pub async fn handle_auth_command(action: AuthCommands) -> anyhow::Result<()> {
+pub async fn handle_auth_command(action: AuthCommands) -> crate::error::Result<()> {
     let storage = crate::auth::storage::AuthStorage::new()?;
 
     match action {

@@ -1,5 +1,18 @@
+use crate::cli::{SortOrder, VersionTypeFilter};
 use crate::launcher;
-use log::info;
+use log::{error, info};
+
+/// Options for listing Minecraft versions
+#[derive(Debug)]
+pub struct ListVersionsOptions {
+    pub types: Vec<VersionTypeFilter>,
+    pub releases_only: bool,
+    pub snapshots_only: bool,
+    pub limit: usize,
+    pub filter: Option<String>,
+    pub show_installed: bool,
+    pub sort: SortOrder,
+}
 
 /// Lists available Minecraft versions.
 ///
@@ -8,32 +21,114 @@ use log::info;
 /// Returns an error if fetching the version manifest or processing versions fails.
 pub async fn list_versions(
     launcher: &launcher::Launcher,
-    releases_only: bool,
-    limit: usize,
-) -> anyhow::Result<()> {
+    options: ListVersionsOptions,
+) -> crate::error::Result<()> {
     // ...existing code from main.rs...
     info!("Fetching available Minecraft versions...");
     let manifest = launcher.file_manager.get_version_manifest().await?;
 
     let mut versions = manifest.versions.clone();
 
-    if releases_only {
+    // Handle filtering based on the new options
+    if !options.types.is_empty() {
+        // Filter by specific types provided
+        versions.retain(|v| {
+            options.types.iter().any(|filter_type| match filter_type {
+                VersionTypeFilter::Release => {
+                    matches!(v.version_type, launcher::VersionType::Release)
+                }
+                VersionTypeFilter::Snapshot => {
+                    matches!(v.version_type, launcher::VersionType::Snapshot)
+                }
+                VersionTypeFilter::OldBeta => {
+                    matches!(v.version_type, launcher::VersionType::OldBeta)
+                }
+                VersionTypeFilter::OldAlpha => {
+                    matches!(v.version_type, launcher::VersionType::OldAlpha)
+                }
+            })
+        });
+    } else if options.releases_only {
+        // Backward compatibility: filter only releases
         versions.retain(|v| matches!(v.version_type, launcher::VersionType::Release));
+    } else if options.snapshots_only {
+        // Filter only snapshots
+        versions.retain(|v| matches!(v.version_type, launcher::VersionType::Snapshot));
     }
 
-    versions.truncate(limit);
+    // Apply text filter if provided
+    if let Some(filter_pattern) = &options.filter {
+        let pattern = filter_pattern.to_lowercase();
+        versions.retain(|v| v.id.to_lowercase().contains(&pattern));
+    }
+
+    // Sort versions according to the specified order
+    match options.sort {
+        SortOrder::NewestFirst => {
+            // Already sorted newest first in the manifest, no change needed
+        }
+        SortOrder::OldestFirst => {
+            versions.reverse();
+        }
+        SortOrder::Alphabetical => {
+            versions.sort_by(|a, b| a.id.cmp(&b.id));
+        }
+    }
+
+    // Apply limit
+    versions.truncate(options.limit);
+
+    // Show hint about filtering options if using default settings
+    let is_using_defaults = options.types.is_empty()
+        && !options.releases_only
+        && !options.snapshots_only
+        && options.filter.is_none()
+        && options.limit == 10
+        && !options.show_installed
+        && matches!(options.sort, SortOrder::NewestFirst);
+
+    if is_using_defaults {
+        info!(
+            "💡 Tip: Use 'rustified list --help' to see filtering options like --types, --filter, --sort, and more!"
+        );
+    }
 
     info!("Available Minecraft versions:");
     info!("Latest release: {}", manifest.latest.release);
     info!("Latest snapshot: {}", manifest.latest.snapshot);
+
+    if let Some(filter_pattern) = &options.filter {
+        info!("Filtered by: \"{filter_pattern}\"");
+    }
+
+    if !options.types.is_empty() {
+        let type_names: Vec<String> = options.types.iter().map(|t| format!("{t:?}")).collect();
+        info!("Types: {}", type_names.join(", "));
+    } else if options.releases_only {
+        info!("Showing only: Release versions");
+    } else if options.snapshots_only {
+        info!("Showing only: Snapshot versions");
+    }
+
+    if !is_using_defaults {
+        info!("Sort order: {:?}", options.sort);
+    }
+    info!(
+        "Showing {} of {} total versions",
+        versions.len().min(options.limit),
+        manifest.versions.len()
+    );
     info!("");
 
     for version in &versions {
-        let installed_marker = if launcher.minecraft_dir.is_version_installed(&version.id) {
-            "✓ "
-        } else {
-            "  "
-        };
+        let installed_marker =
+            if options.show_installed && launcher.minecraft_dir.is_version_installed(&version.id) {
+                "✓ "
+            } else if options.show_installed {
+                "  "
+            } else {
+                ""
+            };
 
         info!(
             "{}{} ({:?}) - {}",
@@ -50,7 +145,10 @@ pub async fn list_versions(
 ///
 /// Returns an error if resolving the version alias, fetching version info, creating directories,
 /// or downloading game files, libraries, or assets fails.
-pub async fn prepare_game(launcher: &launcher::Launcher, version: &str) -> anyhow::Result<()> {
+pub async fn prepare_game(
+    launcher: &launcher::Launcher,
+    version: &str,
+) -> crate::error::Result<()> {
     // ...existing code from main.rs...
     let resolved_version = super::game::resolve_version_alias(launcher, version).await?;
 
@@ -99,8 +197,7 @@ pub async fn launch_game(
     launcher: &launcher::Launcher,
     instance_name: &str,
     _skip_verification: bool,
-) -> anyhow::Result<()> {
-    // ...existing code from main.rs...
+) -> crate::error::Result<()> {
     let (instance_config, version) = {
         let instance_manager = launcher.instance_manager.lock().await;
         if let Some(config) = instance_manager.get_instance(instance_name) {
@@ -108,10 +205,9 @@ pub async fn launch_game(
             let version = config.version.clone();
             (Some(config_clone), version)
         } else {
-            return Err(anyhow::anyhow!(
-                "Instance '{}' does not exist. Use 'rustified instance list' to see available instances or 'rustified instance create' to create one.",
-                instance_name
-            ));
+            return Err(crate::error::InstanceError::not_found(format!(
+                "Instance '{instance_name}' does not exist. Use 'rustified instance list' to see available instances or 'rustified instance create' to create one."
+            )).into());
         }
     };
 
@@ -123,12 +219,10 @@ pub async fn launch_game(
         .get_version_info(&resolved_version)
         .await
     {
-        log::error!("Invalid Minecraft version: {resolved_version} : {e}");
-        return Err(anyhow::anyhow!(
-            "Instance '{}' uses an invalid Minecraft version ('{}'). Use 'rustified list' to see valid versions.",
-            instance_name,
-            resolved_version
-        ));
+        error!("Invalid Minecraft version: {resolved_version} : {e}");
+        return Err(crate::error::GameError::invalid_version(format!(
+            "Instance '{instance_name}' uses an invalid Minecraft version ('{resolved_version}'). Use 'rustified list' to see valid versions."
+        )).into());
     }
 
     // Update last used timestamp
@@ -148,7 +242,7 @@ pub async fn launch_game(
             result
         }
         Err(e) => {
-            log::error!("Authentication failed: {e}");
+            error!("Authentication failed: {e}");
             return Err(e);
         }
     };
@@ -179,7 +273,7 @@ pub async fn launch_game(
 pub async fn resolve_version_alias(
     launcher: &launcher::Launcher,
     version: &str,
-) -> anyhow::Result<String> {
+) -> crate::error::Result<String> {
     match version {
         "latest-release" | "latest" => {
             let manifest = launcher.file_manager.get_version_manifest().await?;

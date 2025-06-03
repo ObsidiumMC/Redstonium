@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use crate::error::{AuthError, Result, ResultExt};
 use log::{debug, error, trace};
 use reqwest::Client;
 use reqwest::header::{ACCEPT, CONTENT_TYPE};
@@ -29,7 +29,9 @@ pub async fn get_xbox_live_token(client: &Client, ms_token: &str) -> Result<(Str
         .json(&xbl_request)
         .send()
         .await
-        .context("Failed to send request to Xbox Live authentication endpoint")?;
+        .with_context(|| {
+            "Failed to send request to Xbox Live authentication endpoint".to_string()
+        })?;
 
     let status = response.status();
     debug!("Received response from Xbox Live with status: {status}");
@@ -40,23 +42,22 @@ pub async fn get_xbox_live_token(client: &Client, ms_token: &str) -> Result<(Str
             "Unknown error".to_string()
         });
         error!("Xbox Live authentication failed with status {status}: {error_text}");
-        return Err(anyhow::anyhow!(
-            "Xbox Live authentication failed: {} - {}",
-            status,
-            error_text
-        ));
+        return Err(AuthError::xbox_auth(format!(
+            "Xbox Live authentication failed: {status} - {error_text}"
+        ))
+        .into());
     }
 
     let xbl_response: XboxLiveResponse = response
         .json()
         .await
-        .context("Failed to parse Xbox Live response as JSON")?;
+        .with_context(|| "Failed to parse Xbox Live response as JSON".to_string())?;
 
     let user_hash = if let Some(info) = xbl_response.display_claims.xui.first() {
         info.uhs.clone()
     } else {
         error!("No Xbox User Hash found in response");
-        return Err(anyhow::anyhow!("No Xbox User Hash found in response"));
+        return Err(AuthError::xbox_auth("No Xbox User Hash found in response").into());
     };
 
     debug!("Successfully retrieved Xbox Live token and user hash");
@@ -88,7 +89,7 @@ pub async fn get_xsts_token(client: &Client, xbl_token: &str) -> Result<String> 
         .json(&xsts_request)
         .send()
         .await
-        .context("Failed to send request to XSTS authentication endpoint")?;
+        .with_context(|| "Failed to send request to XSTS authentication endpoint".to_string())?;
 
     let status = response.status();
     debug!("Received response from XSTS with status: {status}");
@@ -105,31 +106,32 @@ pub async fn get_xsts_token(client: &Client, xbl_token: &str) -> Result<String> 
                 error!(
                     "XSTS authentication failed: Account belongs to a child (under 18) and requires adult approval"
                 );
-                return Err(anyhow::anyhow!(
-                    "Xbox Live account belongs to a child (under 18) and requires adult approval"
-                ));
+                return Err(AuthError::xbox_auth(
+                    "Xbox Live account belongs to a child (under 18) and requires adult approval",
+                )
+                .into());
             } else if error_text.contains("2148916238") {
                 error!(
                     "XSTS authentication failed: Account is from a country/region where Xbox Live is not available"
                 );
-                return Err(anyhow::anyhow!(
-                    "Xbox Live is not available in your country/region"
-                ));
+                return Err(AuthError::xbox_auth(
+                    "Xbox Live is not available in your country/region",
+                )
+                .into());
             }
         }
 
         error!("XSTS authentication failed with status {status}: {error_text}");
-        return Err(anyhow::anyhow!(
-            "XSTS authentication failed: {} - {}",
-            status,
-            error_text
-        ));
+        return Err(AuthError::xbox_auth(format!(
+            "XSTS authentication failed: {status} - {error_text}"
+        ))
+        .into());
     }
 
     let xsts_response: XboxLiveResponse = response
         .json()
         .await
-        .context("Failed to parse XSTS response as JSON")?;
+        .with_context(|| "Failed to parse XSTS response as JSON".to_string())?;
 
     debug!("Successfully retrieved XSTS token");
     trace!("XSTS token length: {}", xsts_response.token.len());

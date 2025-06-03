@@ -7,11 +7,6 @@ set -e
 
 trap 'echo "❌ Script failed. Please check the error messages above and fix the issues before making a PR."; exit 1' ERR
 
-# Check for uncommitted changes
-git diff --quiet || { echo "❌ You have uncommitted changes. Please commit or stash them before making a PR."; exit 1; }
-
-echo "✅ No uncommitted changes."
-
 # Run formatting check
 echo "🔍 Checking code formatting..."
 cargo fmt --all -- --check

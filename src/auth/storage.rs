@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, anyhow};
+use crate::error::{AuthError, Result, ResultExt};
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -21,7 +21,8 @@ pub struct AuthStorage {
 impl AuthStorage {
     pub fn new() -> Result<Self> {
         let cache_dir = Self::get_cache_dir()?;
-        std::fs::create_dir_all(&cache_dir).context("Failed to create cache directory")?;
+        std::fs::create_dir_all(&cache_dir)
+            .with_context(|| "Failed to create cache directory".to_string())?;
 
         let cache_file_path = cache_dir.join("auth_cache.json");
 
@@ -32,12 +33,13 @@ impl AuthStorage {
     fn get_cache_dir() -> Result<PathBuf> {
         match std::env::consts::OS {
             "windows" => {
-                let appdata =
-                    std::env::var("APPDATA").context("APPDATA environment variable not found")?;
+                let appdata = std::env::var("APPDATA")
+                    .with_context(|| "APPDATA environment variable not found".to_string())?;
                 Ok(PathBuf::from(appdata).join("rustified").join("cache"))
             }
             "macos" => {
-                let home = std::env::var("HOME").context("HOME environment variable not found")?;
+                let home = std::env::var("HOME")
+                    .with_context(|| "HOME environment variable not found".to_string())?;
                 Ok(PathBuf::from(home)
                     .join("Library")
                     .join("Caches")
@@ -54,10 +56,11 @@ impl AuthStorage {
                 );
                 Ok(cache_dir.join("rustified"))
             }
-            _ => Err(anyhow!(
+            _ => Err(AuthError::cache_error(format!(
                 "Unsupported operating system: {}",
                 std::env::consts::OS
-            )),
+            ))
+            .into()),
         }
     }
 
@@ -75,11 +78,11 @@ impl AuthStorage {
         };
 
         let json = serde_json::to_string_pretty(&cached_auth)
-            .context("Failed to serialize cached auth")?;
+            .with_context(|| "Failed to serialize cached auth".to_string())?;
 
         fs::write(&self.cache_file_path, json)
             .await
-            .context("Failed to write auth cache file")?;
+            .with_context(|| "Failed to write auth cache file".to_string())?;
 
         info!(
             "✓ Authentication cached until {}",
@@ -99,10 +102,10 @@ impl AuthStorage {
 
         let content = fs::read_to_string(&self.cache_file_path)
             .await
-            .context("Failed to read auth cache file")?;
+            .with_context(|| "Failed to read auth cache file".to_string())?;
 
-        let cached_auth: CachedAuth =
-            serde_json::from_str(&content).context("Failed to parse cached auth")?;
+        let cached_auth: CachedAuth = serde_json::from_str(&content)
+            .with_context(|| "Failed to parse cached auth".to_string())?;
 
         // Check if token is still valid
         let now = OffsetDateTime::now_utc();
@@ -136,7 +139,7 @@ impl AuthStorage {
         if self.cache_file_path.exists() {
             fs::remove_file(&self.cache_file_path)
                 .await
-                .context("Failed to remove auth cache file")?;
+                .with_context(|| "Failed to remove auth cache file".to_string())?;
             info!("✓ Authentication cache cleared");
         }
         Ok(())

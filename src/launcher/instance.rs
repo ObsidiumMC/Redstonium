@@ -139,7 +139,7 @@ impl InstanceManager {
             }
         }
 
-        info!("Loaded {} instances", self.instances.len());
+        debug!("Loaded {} instances", self.instances.len());
         Ok(())
     }
 

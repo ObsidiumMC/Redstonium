@@ -1,5 +1,5 @@
 use anyhow::{Context, Result, anyhow};
-use log::{debug, info, warn};
+use log::{debug, warn};
 use std::collections::HashMap;
 use std::env;
 use std::path::{Path, PathBuf};
@@ -33,7 +33,7 @@ impl JavaManager {
 
     /// Initialize the Java manager by scanning for Java installations
     pub fn initialize(&mut self) {
-        info!("Scanning for Java installations...");
+        debug!("Scanning for Java installations...");
         self.scan_java_installations();
 
         if self.installations.is_empty() {
@@ -41,9 +41,9 @@ impl JavaManager {
                 "No Java installations found! Please ensure Java is installed and available in PATH or JAVA_HOME"
             );
         } else {
-            info!("Found {} Java installation(s)", self.installations.len());
+            debug!("Found {} Java installation(s)", self.installations.len());
             for (major, installation) in &self.installations {
-                info!("  Java {}: {}", major, installation.path.display());
+                debug!("  Java {}: {}", major, installation.path.display());
             }
         }
     }

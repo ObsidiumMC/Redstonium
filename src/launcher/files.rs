@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, anyhow};
+use crate::error::{FileManagerError, Result, ResultExt};
 use log::{debug, info, warn};
 use reqwest::Client;
 use sha1::{Digest, Sha1};
@@ -37,10 +37,11 @@ impl FileManager {
             .context("Failed to fetch version manifest")?;
 
         if !response.status().is_success() {
-            return Err(anyhow!(
+            return Err(FileManagerError::download_failed(format!(
                 "Failed to fetch version manifest: HTTP {}",
                 response.status()
-            ));
+            ))
+            .into());
         }
 
         let manifest: VersionManifest = response
@@ -66,7 +67,11 @@ impl FileManager {
             .versions
             .iter()
             .find(|v| v.id == version_id)
-            .ok_or_else(|| anyhow!("Version {} not found in manifest", version_id))?;
+            .ok_or_else(|| {
+                FileManagerError::version_not_found(&format!(
+                    "Version {version_id} not found in manifest"
+                ))
+            })?;
 
         info!("Fetching version info from {}", version_entry.url);
 
@@ -78,10 +83,11 @@ impl FileManager {
             .with_context(|| format!("Failed to fetch version info for {version_id}"))?;
 
         if !response.status().is_success() {
-            return Err(anyhow!(
+            return Err(FileManagerError::download_failed(format!(
                 "Failed to fetch version info: HTTP {}",
                 response.status()
-            ));
+            ))
+            .into());
         }
 
         let version_info: VersionInfo = response
@@ -419,10 +425,12 @@ impl FileManager {
                     // Create asset directory if needed
                     if let Some(parent) = asset_path.parent() {
                         if let Err(e) = fs::create_dir_all(parent).await {
-                            return Err(anyhow!(
-                                "Failed to create asset directory {}: {}",
-                                parent.display(),
-                                e
+                            return Err(crate::error::RustifiedError::FileManager(
+                                FileManagerError::filesystem_error(format!(
+                                    "Failed to create asset directory {}: {}",
+                                    parent.display(),
+                                    e
+                                )),
                             ));
                         }
                     }
@@ -493,7 +501,11 @@ impl FileManager {
             .with_context(|| format!("Failed to start download from {url}"))?;
 
         if !response.status().is_success() {
-            return Err(anyhow!("Download failed: HTTP {}", response.status()));
+            return Err(FileManagerError::download_failed(format!(
+                "Download failed: HTTP {}",
+                response.status()
+            ))
+            .into());
         }
 
         let mut file = fs::File::create(path)
@@ -521,21 +533,19 @@ impl FileManager {
 
         // Verify size
         if downloaded != expected_size {
-            return Err(anyhow!(
-                "Size mismatch: expected {}, got {}",
-                expected_size,
-                downloaded
-            ));
+            return Err(FileManagerError::validation_failed(format!(
+                "Size mismatch: expected {expected_size}, got {downloaded}"
+            ))
+            .into());
         }
 
         // Verify SHA1
         let actual_sha1 = format!("{:x}", hasher.finalize());
         if actual_sha1 != expected_sha1 {
-            return Err(anyhow!(
-                "SHA1 mismatch: expected {}, got {}",
-                expected_sha1,
-                actual_sha1
-            ));
+            return Err(FileManagerError::validation_failed(format!(
+                "SHA1 mismatch: expected {expected_sha1}, got {actual_sha1}"
+            ))
+            .into());
         }
 
         Ok(())

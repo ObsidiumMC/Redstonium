@@ -11,15 +11,16 @@ pub use java::JavaManager;
 pub use minecraft_dir::MinecraftDir;
 pub use version::VersionType;
 
+use crate::error::Result;
 use crate::{auth::AuthResult, launcher};
-use anyhow::Result;
+use std::cell::RefCell;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
 pub struct Launcher {
     pub minecraft_dir: MinecraftDir,
     pub file_manager: FileManager,
-    pub java_manager: JavaManager,
+    pub java_manager: RefCell<JavaManager>,
     pub instance_manager: Arc<Mutex<InstanceManager>>,
 }
 
@@ -27,10 +28,7 @@ impl Launcher {
     pub async fn new() -> Result<Self> {
         let minecraft_dir = MinecraftDir::new()?;
         let file_manager = FileManager::new();
-        let mut java_manager = JavaManager::new();
-
-        // Initialize Java manager
-        java_manager.initialize();
+        let java_manager = RefCell::new(JavaManager::new());
 
         // Initialize instance manager with Arc<Mutex<>> for shared mutable access
         let instance_manager = Arc::new(Mutex::new(
@@ -81,9 +79,10 @@ impl Launcher {
             &version_info,
             auth,
             &self.minecraft_dir,
-            &self.java_manager,
+            &self.java_manager.borrow(),
             instance,
-        )
+        )?;
+        Ok(())
     }
 }
 

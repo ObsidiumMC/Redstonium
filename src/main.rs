@@ -6,16 +6,17 @@
 mod auth;
 pub mod cli;
 pub mod commands;
+pub mod error;
 mod launcher;
 mod logger;
 
 use crate::cli::{Cli, Commands};
 use clap::Parser;
 use dotenvy::dotenv;
-use log::{error, info};
+use log::{debug, error, info};
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> crate::error::Result<()> {
     // Load environment variables from .env file
     dotenv().ok();
 
@@ -28,10 +29,10 @@ async fn main() -> anyhow::Result<()> {
     info!("=====================================");
 
     // Initialize the launcher
-    info!("Initializing launcher...");
+    debug!("Initializing launcher...");
     let launcher = match launcher::Launcher::new().await {
         Ok(launcher) => {
-            info!("✓ Launcher initialized successfully");
+            debug!("✓ Launcher initialized successfully");
             launcher
         }
         Err(e) => {
@@ -42,10 +43,24 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Commands::List {
+            types,
             releases_only,
+            snapshots_only,
             limit,
+            filter,
+            show_installed,
+            sort,
         } => {
-            commands::game::list_versions(&launcher, releases_only, limit).await?;
+            let options = commands::game::ListVersionsOptions {
+                types,
+                releases_only,
+                snapshots_only,
+                limit,
+                filter,
+                show_installed,
+                sort,
+            };
+            commands::game::list_versions(&launcher, options).await?;
         }
         Commands::Launch {
             instance,

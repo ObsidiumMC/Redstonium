@@ -1,0 +1,85 @@
+name: Question
+description: Ask a question about using rustified
+title: "[QUESTION] "
+labels: [question, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have a question about using rustified? We're here to help! Please check the documentation first, but if you can't find the answer, feel free to ask.
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Question category
+      description: What category does your question fall into?
+      options:
+        - Installation/Setup
+        - Authentication
+        - Game management
+        - Java management
+        - Configuration
+        - Troubleshooting
+        - Best practices
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: What would you like to know?
+      placeholder: Please be as specific as possible...
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Provide any relevant context that might help us answer your question.
+      placeholder: What are you trying to achieve? What have you already tried?
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: What version of rustified are you using?
+      placeholder: e.g., v1.0.0 or commit hash
+    validations:
+      required: false
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      description: What operating system are you using?
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Other
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: searched
+    attributes:
+      label: Documentation check
+      description: Please confirm you've checked the available documentation
+      options:
+        - label: I have checked the README.md
+        - label: I have checked the existing issues
+        - label: I have checked the documentation/guides (if available)
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our Code of Conduct
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true

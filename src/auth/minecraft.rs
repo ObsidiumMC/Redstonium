@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use crate::error::{AuthError, Result, ResultExt};
 use log::{debug, error, trace, warn};
 use reqwest::Client;
 use reqwest::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE};
@@ -27,7 +27,9 @@ pub async fn get_minecraft_token(
         .json(&minecraft_request)
         .send()
         .await
-        .context("Failed to send request to Minecraft authentication endpoint")?;
+        .with_context(|| {
+            "Failed to send request to Minecraft authentication endpoint".to_string()
+        })?;
 
     let status = response.status();
     debug!("Received response from Minecraft with status: {status}");
@@ -38,17 +40,16 @@ pub async fn get_minecraft_token(
             "Unknown error".to_string()
         });
         error!("Minecraft authentication failed with status {status}: {error_text}");
-        return Err(anyhow::anyhow!(
-            "Minecraft authentication failed: {} - {}",
-            status,
-            error_text
-        ));
+        return Err(AuthError::minecraft_auth(format!(
+            "Minecraft authentication failed: {status} - {error_text}"
+        ))
+        .into());
     }
 
     let minecraft_response: MinecraftAuthResponse = response
         .json()
         .await
-        .context("Failed to parse Minecraft authentication response as JSON")?;
+        .with_context(|| "Failed to parse Minecraft authentication response as JSON".to_string())?;
 
     debug!(
         "Successfully retrieved Minecraft token with expiration in {} seconds",
@@ -70,7 +71,7 @@ pub async fn verify_game_ownership(client: &Client, minecraft_token: &str) -> Re
         .header(AUTHORIZATION, format!("Bearer {minecraft_token}"))
         .send()
         .await
-        .context("Failed to send request to Minecraft entitlement endpoint")?;
+        .with_context(|| "Failed to send request to Minecraft entitlement endpoint".to_string())?;
 
     let status = response.status();
     debug!("Received response from Minecraft entitlement check with status: {status}");
@@ -81,18 +82,17 @@ pub async fn verify_game_ownership(client: &Client, minecraft_token: &str) -> Re
             "Unknown error".to_string()
         });
         error!("Failed to verify game ownership with status {status}: {error_text}");
-        return Err(anyhow::anyhow!(
-            "Failed to verify game ownership: {} - {}",
-            status,
-            error_text
-        ));
+        return Err(AuthError::game_ownership(format!(
+            "Failed to verify game ownership: {status} - {error_text}"
+        ))
+        .into());
     }
 
     // For debugging, get the raw JSON response
     let body = response
         .text()
         .await
-        .context("Failed to read entitlement response body")?;
+        .with_context(|| "Failed to read entitlement response body".to_string())?;
     debug!("Got entitlements response: {body}");
 
     // If the response is empty or doesn't contain items, assume the user has the game
@@ -103,7 +103,7 @@ pub async fn verify_game_ownership(client: &Client, minecraft_token: &str) -> Re
     }
 
     // Try to parse the response as JSON
-    let parsed: Result<EntitlementResponse, _> = serde_json::from_str(&body);
+    let parsed: std::result::Result<EntitlementResponse, _> = serde_json::from_str(&body);
 
     match parsed {
         Ok(entitlements) => {
@@ -143,7 +143,7 @@ pub async fn get_player_profile(
         .header(AUTHORIZATION, format!("Bearer {minecraft_token}"))
         .send()
         .await
-        .context("Failed to send request to Minecraft profile endpoint")?;
+        .with_context(|| "Failed to send request to Minecraft profile endpoint".to_string())?;
 
     let status = response.status();
     debug!("Received response from Minecraft profile endpoint with status: {status}");
@@ -154,17 +154,16 @@ pub async fn get_player_profile(
             "Unknown error".to_string()
         });
         error!("Failed to get Minecraft profile with status {status}: {error_text}");
-        return Err(anyhow::anyhow!(
-            "Failed to get Minecraft profile: {} - {}",
-            status,
-            error_text
-        ));
+        return Err(AuthError::profile_retrieval(format!(
+            "Failed to get Minecraft profile: {status} - {error_text}"
+        ))
+        .into());
     }
 
     let profile: MinecraftProfile = response
         .json()
         .await
-        .context("Failed to parse Minecraft profile response as JSON")?;
+        .with_context(|| "Failed to parse Minecraft profile response as JSON".to_string())?;
 
     debug!(
         "Successfully retrieved Minecraft profile for player: {} ({})",

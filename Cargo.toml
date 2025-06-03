@@ -29,7 +29,7 @@ tokio = { version = "1", features = ["full"] }
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-# Error handling
+# Error handling (transitional - being replaced with custom errors)
 anyhow = "1.0"
 # Env and OAuth
 dotenvy = "0.15"

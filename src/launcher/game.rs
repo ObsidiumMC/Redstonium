@@ -1,5 +1,5 @@
 use anyhow::{Context, Result, anyhow};
-use log::{debug, info};
+use log::{debug, error, info};
 use std::env;
 use std::process::{Command, Stdio};
 
@@ -180,7 +180,7 @@ impl GameLauncher {
             );
             classpath.push(game_jar.to_string_lossy().to_string());
         } else {
-            log::error!("Main game JAR not found: {}", game_jar.display());
+            error!("Main game JAR not found: {}", game_jar.display());
             return Err(anyhow!("Main game JAR not found: {}", game_jar.display()));
         }
 
@@ -240,7 +240,7 @@ impl GameLauncher {
         }
 
         if classpath.is_empty() {
-            log::error!("Classpath is empty! This will likely cause a NoClassDefFoundError.");
+            error!("Classpath is empty! This will likely cause a NoClassDefFoundError.");
             return Err(anyhow!("Classpath construction failed, no entries found."));
         }
 

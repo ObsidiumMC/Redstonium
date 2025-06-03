@@ -1,0 +1,85 @@
+name: Documentation Issue
+description: Report an issue with documentation
+title: "[DOCS] "
+labels: [documentation, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve our documentation! Please let us know what needs to be fixed or improved.
+
+  - type: dropdown
+    id: doc-type
+    attributes:
+      label: Documentation type
+      description: What type of documentation issue is this?
+      options:
+        - README.md
+        - Code comments
+        - Guide/Tutorial
+        - API documentation
+        - Examples
+        - Installation instructions
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: Location
+      description: Where is the documentation issue located?
+      placeholder: e.g., README.md line 42, src/main.rs function docs, etc.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Issue type
+      description: What kind of documentation issue is this?
+      options:
+        - Typo/Grammar
+        - Incorrect information
+        - Missing information
+        - Unclear explanation
+        - Broken link
+        - Missing example
+        - Outdated content
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the documentation issue in detail.
+      placeholder: What's wrong with the current documentation?
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested improvement
+      description: If you have a suggestion for how to improve the documentation, please share it here.
+      placeholder: How should this be corrected or improved?
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Add any other context about the documentation issue here.
+      placeholder: Screenshots, links, etc.
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our Code of Conduct
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true

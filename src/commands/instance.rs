@@ -8,7 +8,7 @@ use log::{error, info};
 pub async fn handle_instance_command(
     launcher: &crate::launcher::Launcher,
     action: InstanceCommands,
-) -> anyhow::Result<()> {
+) -> crate::error::Result<()> {
     match action {
         InstanceCommands::List => {
             let instance_manager = launcher.instance_manager.lock().await;
@@ -72,7 +72,10 @@ pub async fn handle_instance_command(
                 }
             } else {
                 error!("Instance '{name}' does not exist");
-                return Err(anyhow::anyhow!("Instance not found"));
+                return Err(crate::error::InstanceError::not_found(
+                    "Instance not found".to_string(),
+                )
+                .into());
             }
         }
         InstanceCommands::Create {

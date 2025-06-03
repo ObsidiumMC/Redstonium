@@ -2,9 +2,13 @@ use crate::cli::JavaCommands;
 use log::info;
 
 pub fn handle_java_command(launcher: &crate::launcher::Launcher, action: JavaCommands) {
+    // Lazily initialize Java installations for Java commands
+    let mut java_manager = launcher.java_manager.borrow_mut();
+    java_manager.initialize();
+
     match action {
         JavaCommands::List => {
-            let installations = &launcher.java_manager.installations;
+            let installations = &java_manager.installations;
             if installations.is_empty() {
                 info!("No Java installations found. Try installing Java or setting JAVA_HOME.");
             } else {
