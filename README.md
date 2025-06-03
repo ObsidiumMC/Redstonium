@@ -7,39 +7,39 @@
 
 A high-performance, cross-platform Minecraft launcher written in Rust that provides a modern CLI experience for managing and launching Minecraft instances.
 
-## ✨ Features
+## Features
 
-### 🔐 **Secure Authentication**
+### **Secure Authentication**
 - Microsoft OAuth 2.0 integration with Xbox Live authentication
 - Secure token storage and automatic refresh
 - Full support for Microsoft/Mojang accounts
 
-### 🎮 **Instance Management**
+### **Instance Management**
 - Create and manage multiple Minecraft instances
 - Per-instance settings (memory allocation, Java args, game directory)
 - Quick instance switching and launch tracking
 
-### ☕ **Smart Java Management**
+### **Smart Java Management**
 - Automatic Java detection across platforms
 - Version compatibility matching for Minecraft versions
 - Support for multiple Java installations
 
-### 📦 **Efficient File Management**
+### **Efficient File Management**
 - Parallel downloading with SHA1 verification
 - Incremental updates and smart caching
 - Support for all Minecraft versions (Alpha, Beta, Release, Snapshot)
 
-### 🚀 **Performance Optimized**
+### **Performance Optimized**
 - Concurrent asset and library downloads
 - Memory-efficient file processing
 - Fast startup times with cached authentication
 
-### 🌍 **Cross-Platform Support**
+### **Cross-Platform Support**
 - Windows, macOS, and Linux compatibility
 - Native file system integration
 - Platform-specific optimizations
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Installation
 
@@ -59,18 +59,18 @@ cargo install --path .
 ### First Launch
 
 1. **Create your first instance:**
-   ```bash
-   rustified instance create my-instance 1.20.4
-   ```
+    ```bash
+    rustified instance create my-instance 1.20.4
+    ```
 
 2. **Launch Minecraft:**
-   ```bash
-   rustified launch my-instance
-   ```
+    ```bash
+    rustified launch my-instance
+    ```
 
 The launcher will automatically handle authentication and download necessary files.
 
-## 📋 Usage
+## Usage
 
 ### Version Management
 
@@ -143,7 +143,7 @@ rustified java list
 rustified java recommend <minecraft-version>
 ```
 
-## 🏗️ Architecture
+## Architecture
 
 Rustified is built with a modular architecture:
 
@@ -169,7 +169,7 @@ src/
 - **JavaManager**: Detects and manages Java installations
 - **AuthManager**: Handles the complete Microsoft → Xbox Live → Minecraft auth flow
 
-## 🔧 Configuration
+## Configuration
 
 ### Instance Settings
 
@@ -178,15 +178,15 @@ Each instance supports customizable settings:
 ```rust
 // Instance configuration example
 {
-    "name": "my-instance",
-    "version": "1.20.4",
-    "description": "My custom instance",
-    "settings": {
-        "memory_mb": 4096,
-        "java_args": ["-XX:+UseG1GC"],
-        "resolution": {"width": 1920, "height": 1080}
-    },
-    "last_used": "2024-01-15T10:30:00Z"
+     "name": "my-instance",
+     "version": "1.20.4",
+     "description": "My custom instance",
+     "settings": {
+          "memory_mb": 4096,
+          "java_args": ["-XX:+UseG1GC"],
+          "resolution": {"width": 1920, "height": 1080}
+     },
+     "last_used": "2024-01-15T10:30:00Z"
 }
 ```
 
@@ -197,7 +197,7 @@ Authentication tokens are securely stored in:
 - **macOS**: `~/Library/Application Support/rustified/auth.json`
 - **Linux**: `~/.local/share/rustified/auth.json`
 
-## 🛠️ Development
+## Development
 
 ### Prerequisites
 
@@ -237,7 +237,7 @@ The project maintains high code quality with:
 - Memory-safe concurrent operations
 - Cross-platform compatibility testing
 
-## 📊 Performance
+## Performance
 
 Rustified is designed for performance:
 
@@ -246,7 +246,7 @@ Rustified is designed for performance:
 - **Memory Efficient**: Optimized for large modpacks and asset collections
 - **Fast Startup**: Cached authentication and version data
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -278,11 +278,11 @@ Enable detailed logging:
 RUST_LOG=debug rustified <command>
 ```
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🗺️ Roadmap
+## Roadmap
 
 - [ ] **GUI Interface**: Native desktop application
 - [ ] **Mod Support**: Forge, Fabric, and Quilt integration
