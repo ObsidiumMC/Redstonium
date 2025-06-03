@@ -25,7 +25,7 @@ async fn main() -> crate::error::Result<()> {
 
     let cli = Cli::parse();
 
-    info!("Rustified Minecraft Launcher v0.2.0");
+    info!("Rustified Minecraft Launcher v0.3.1");
     info!("=====================================");
 
     // Initialize the launcher

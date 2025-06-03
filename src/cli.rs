@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 #[derive(Parser)]
 #[command(name = "rustified")]
 #[command(about = "A Minecraft CLI launcher written in Rust")]
-#[command(version = "0.2.0")]
+#[command(version = "0.3.1")]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,

@@ -1,4 +1,5 @@
 use crate::error::{FileManagerError, Result, ResultExt};
+use crate::launcher;
 use log::{debug, info, warn};
 use reqwest::Client;
 use sha1::{Digest, Sha1};
@@ -157,12 +158,25 @@ impl FileManager {
         minecraft_dir: &MinecraftDir,
     ) -> Result<()> {
         info!("Downloading libraries for {}", version_info.id);
+        debug!("About to filter {} libraries", version_info.libraries.len());
+
+        // Filter libraries to prefer the correct architecture for native libraries
+        let filtered_libraries =
+            launcher::files::FileManager::filter_native_libraries_by_architecture(
+                &version_info.libraries,
+            );
+
+        debug!(
+            "Architecture filtering: {} libraries -> {} libraries",
+            version_info.libraries.len(),
+            filtered_libraries.len()
+        );
 
         let mut total_libraries = 0;
         let mut downloaded_libraries = 0;
         let mut skipped_libraries = 0;
 
-        for library in &version_info.libraries {
+        for library in &filtered_libraries {
             if !library.should_use() {
                 debug!("Skipping library {} (platform rules)", library.name);
                 skipped_libraries += 1;
@@ -218,9 +232,14 @@ impl FileManager {
                     "Native library {} already exists and is valid",
                     library.name
                 );
-                // Still need to extract if natives directory doesn't exist
+                // Always check if natives need to be extracted from this library
                 let natives_dir = minecraft_dir.natives_dir(&version_info.id);
-                if !natives_dir.exists() {
+                if launcher::files::FileManager::should_extract_natives(
+                    &full_path,
+                    &natives_dir,
+                    library,
+                )? {
+                    debug!("Extracting natives from existing JAR: {}", library.name);
                     self.extract_natives(&full_path, &natives_dir, library)
                         .await
                         .with_context(|| {
@@ -318,10 +337,28 @@ impl FileManager {
                     })?;
                 }
 
-                if !self
+                if self
                     .is_file_valid(&full_path, &native_download.sha1)
                     .await?
                 {
+                    // File exists and is valid, but still need to check if natives need extraction
+                    let natives_dir = minecraft_dir.natives_dir(&version_info.id);
+                    if launcher::files::FileManager::should_extract_natives(
+                        &full_path,
+                        &natives_dir,
+                        library,
+                    )? {
+                        debug!(
+                            "Extracting natives from existing legacy JAR: {}-{}",
+                            library.name, native_classifier
+                        );
+                        self.extract_natives(&full_path, &natives_dir, library)
+                            .await
+                            .with_context(|| {
+                                format!("Failed to extract natives from {}", library.name)
+                            })?;
+                    }
+                } else {
                     debug!(
                         "Downloading legacy native library: {}-{}",
                         library.name, native_classifier
@@ -644,6 +681,169 @@ impl FileManager {
 
         debug!("✓ Native extraction completed for {}", library.name);
         Ok(())
+    }
+
+    /// Check if natives should be extracted from a library JAR
+    fn should_extract_natives(
+        jar_path: &Path,
+        natives_dir: &Path,
+        library: &Library,
+    ) -> Result<bool> {
+        // If natives directory doesn't exist, we definitely need to extract
+        if !natives_dir.exists() {
+            return Ok(true);
+        }
+
+        // Check if the specific native files from this JAR are already extracted
+        // We do this by looking at the JAR contents and seeing if those files exist in natives_dir
+        let jar_file = std::fs::File::open(jar_path)
+            .with_context(|| format!("Failed to open JAR file: {}", jar_path.display()))?;
+
+        let mut archive = zip::ZipArchive::new(jar_file)
+            .with_context(|| format!("Failed to read ZIP archive: {}", jar_path.display()))?;
+
+        // Look for .dylib files in the JAR and check if they exist in natives_dir
+        for i in 0..archive.len() {
+            let file = archive
+                .by_index(i)
+                .with_context(|| format!("Failed to read entry {i} from JAR"))?;
+
+            let name = file.name();
+            // Skip META-INF and look for actual native libraries
+            if name.starts_with("META-INF/") || file.is_dir() {
+                continue;
+            }
+
+            if std::path::Path::new(name)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("dylib"))
+                || std::path::Path::new(name)
+                    .extension()
+                    .is_some_and(|ext| ext.eq_ignore_ascii_case("so"))
+                || std::path::Path::new(name)
+                    .extension()
+                    .is_some_and(|ext| ext.eq_ignore_ascii_case("dll"))
+            {
+                let target_path = natives_dir.join(name);
+                if !target_path.exists() {
+                    debug!(
+                        "Native file {} from {} not found in natives directory",
+                        name, library.name
+                    );
+                    return Ok(true);
+                }
+            }
+        }
+
+        debug!(
+            "All native files from {} are already extracted",
+            library.name
+        );
+        Ok(false)
+    }
+
+    #[allow(clippy::match_same_arms)]
+    /// Filter native libraries to prefer the best architecture match
+    fn filter_native_libraries_by_architecture(libraries: &[Library]) -> Vec<Library> {
+        let mut filtered = Vec::new();
+
+        let current_arch = match std::env::consts::ARCH {
+            "aarch64" => "arm64",
+            "x86_64" => "x64",
+            _ => "x64", // Default to x64 for unknown architectures
+        };
+
+        debug!("Filtering native libraries for architecture: {current_arch}");
+        debug!("Total libraries to process: {}", libraries.len());
+
+        // Group native libraries by their base name (without architecture suffix)
+        let mut grouped_libraries: std::collections::HashMap<String, Vec<&Library>> =
+            std::collections::HashMap::new();
+
+        for library in libraries {
+            if library.is_native_library() {
+                debug!("Found native library: {}", library.name);
+
+                // Extract base name by removing architecture-specific suffixes
+                let base_name = if library.name.contains("-arm64") {
+                    library.name.replace("-arm64", "")
+                } else if library.name.contains("-x64") {
+                    library.name.replace("-x64", "")
+                } else {
+                    // Library without specific architecture suffix
+                    library.name.clone()
+                };
+
+                debug!("  Base name: {base_name}");
+                grouped_libraries
+                    .entry(base_name)
+                    .or_default()
+                    .push(library);
+            } else {
+                // Non-native libraries are kept as-is
+                filtered.push(library.clone());
+            }
+        }
+
+        debug!(
+            "Grouped {} native libraries into {} groups",
+            libraries.iter().filter(|l| l.is_native_library()).count(),
+            grouped_libraries.len()
+        );
+
+        // For each group of native libraries, prefer the architecture-specific one
+        for (base_name, group) in &grouped_libraries {
+            debug!(
+                "Processing group '{}' with {} variants:",
+                base_name,
+                group.len()
+            );
+            for lib in group {
+                debug!("  - {}", lib.name);
+            }
+
+            let mut preferred_lib: Option<&Library> = None;
+
+            // Look for current architecture-specific version first
+            for lib in group {
+                if lib.name.contains(&format!("-{current_arch}")) {
+                    debug!("  Found preferred architecture match: {}", lib.name);
+                    preferred_lib = Some(lib);
+                    break;
+                }
+            }
+
+            // If no architecture-specific version found, use the generic one (without -arm64 or -x64)
+            if preferred_lib.is_none() {
+                for lib in group {
+                    if !lib.name.contains("-arm64") && !lib.name.contains("-x64") {
+                        debug!("  Using generic version: {}", lib.name);
+                        preferred_lib = Some(lib);
+                        break;
+                    }
+                }
+            }
+
+            // If still no preference, just use the first one
+            if preferred_lib.is_none() && !group.is_empty() {
+                debug!("  Falling back to first option: {}", group[0].name);
+                preferred_lib = Some(group[0]);
+            }
+
+            if let Some(lib) = preferred_lib {
+                debug!("  Selected: {}", lib.name);
+                filtered.push(lib.clone());
+            } else {
+                debug!("  No library selected for group: {base_name}");
+            }
+        }
+
+        debug!(
+            "Architecture filtering completed: {} -> {} libraries",
+            libraries.len(),
+            filtered.len()
+        );
+        filtered
     }
 }
 

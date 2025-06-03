@@ -43,7 +43,7 @@ impl JavaManager {
         } else {
             debug!("Found {} Java installation(s)", self.installations.len());
             for (major, installation) in &self.installations {
-                debug!("  Java {}: {}", major, installation.path.display());
+                debug!("Java {}: {}", major, installation.path.display());
             }
         }
     }

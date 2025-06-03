@@ -1,10 +1,11 @@
+use std::borrow::Borrow;
+
 use crate::cli::JavaCommands;
 use log::info;
 
 pub fn handle_java_command(launcher: &crate::launcher::Launcher, action: JavaCommands) {
     // Lazily initialize Java installations for Java commands
-    let mut java_manager = launcher.java_manager.borrow_mut();
-    java_manager.initialize();
+    let java_manager = launcher.java_manager.borrow();
 
     match action {
         JavaCommands::List => {

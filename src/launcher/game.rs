@@ -137,10 +137,6 @@ impl GameLauncher {
             }
         }
 
-        // Add natives library path
-        let natives_dir = minecraft_dir.natives_dir(&version_info.id);
-        cmd.arg(format!("-Djava.library.path={}", natives_dir.display()));
-
         // Add Minecraft-specific system properties
         cmd.args([
             "-Dminecraft.launcher.brand=rustified",
