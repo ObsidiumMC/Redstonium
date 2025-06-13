@@ -1,7 +1,7 @@
 use crate::error::{AuthError, Result, ResultExt};
-use log::{debug, error, trace, warn};
 use reqwest::Client;
 use reqwest::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE};
+use tracing::{debug, error, trace, warn};
 
 use super::constants::{MINECRAFT_AUTH_URL, MINECRAFT_ENTITLEMENT_URL, MINECRAFT_PROFILE_URL};
 use super::models::{

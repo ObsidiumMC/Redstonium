@@ -1,7 +1,4 @@
-#![warn(clippy::pedantic)]
-#![warn(clippy::unwrap_used)]
-#![warn(clippy::expect_used)]
-#![warn(dead_code)]
+#![warn(clippy::pedantic, clippy::unwrap_used, clippy::expect_used, dead_code)]
 
 mod auth;
 pub mod cli;
@@ -13,7 +10,7 @@ mod logger;
 use crate::cli::{Cli, Commands};
 use clap::Parser;
 use dotenvy::dotenv;
-use log::{debug, error, info};
+use tracing::{debug, error, info};
 
 #[tokio::main]
 async fn main() -> crate::error::Result<()> {
@@ -21,7 +18,7 @@ async fn main() -> crate::error::Result<()> {
     dotenv().ok();
 
     // Initialize the logger with custom format
-    logger::setup_logger();
+    logger::init();
 
     let cli = Cli::parse();
 

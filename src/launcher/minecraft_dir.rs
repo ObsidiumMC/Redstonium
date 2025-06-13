@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, anyhow};
+use crate::error::{Result, ResultExt, RustifiedError};
 use std::env;
 use std::path::PathBuf;
 
@@ -34,7 +34,10 @@ impl MinecraftDir {
                 let home = env::var("HOME").context("HOME environment variable not found")?;
                 Ok(PathBuf::from(home).join(".minecraft"))
             }
-            _ => Err(anyhow!("Unsupported operating system: {}", env::consts::OS)),
+            _ => Err(RustifiedError::generic(format!(
+                "Unsupported operating system: {}",
+                env::consts::OS
+            ))),
         }
     }
 

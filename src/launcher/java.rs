@@ -1,9 +1,9 @@
-use anyhow::{Context, Result, anyhow};
-use log::{debug, warn};
+use crate::error::{JavaError, Result, ResultExt};
 use std::collections::HashMap;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use tracing::{debug, warn};
 
 use crate::launcher;
 
@@ -111,11 +111,10 @@ impl JavaManager {
             return Ok(installation);
         }
 
-        Err(anyhow!(
-            "No Java installations found! Please install Java {} or higher for Minecraft {}",
-            required_version,
-            minecraft_version
+        Err(JavaError::not_found(format!(
+            "No Java installations found! Please install Java {required_version} or higher for Minecraft {minecraft_version}"
         ))
+        .into())
     }
 
     /// Scan for Java installations in common locations
@@ -260,17 +259,20 @@ impl JavaManager {
                 }
             }
         }
-
-        Err(anyhow!("Failed to probe Java installation: {}", executable))
+        Err(
+            JavaError::execution_failed(format!("Failed to probe Java installation: {executable}"))
+                .into(),
+        )
     }
 
     /// Probe a specific Java installation path
     fn probe_java_installation(java_path: &Path) -> Result<JavaInstallation> {
         if !java_path.exists() {
-            return Err(anyhow!(
+            return Err(JavaError::not_found(format!(
                 "Java executable not found: {}",
                 java_path.display()
-            ));
+            ))
+            .into());
         }
 
         let output = Command::new(java_path)
@@ -279,15 +281,17 @@ impl JavaManager {
             .with_context(|| format!("Failed to execute Java: {}", java_path.display()))?;
 
         if !output.status.success() {
-            return Err(anyhow!(
+            return Err(JavaError::execution_failed(format!(
                 "Java version check failed: {}",
                 java_path.display()
-            ));
+            ))
+            .into());
         }
 
         let version_output = String::from_utf8_lossy(&output.stderr);
-        let version = parse_java_version(&version_output)
-            .ok_or_else(|| anyhow!("Failed to parse Java version: {}", version_output))?;
+        let version = parse_java_version(&version_output).ok_or_else(|| {
+            JavaError::version_parsing(format!("Failed to parse Java version: {version_output}"))
+        })?;
 
         Ok(JavaInstallation {
             path: java_path.to_path_buf(),

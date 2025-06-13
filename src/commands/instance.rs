@@ -1,5 +1,5 @@
 use crate::cli::InstanceCommands;
-use log::{error, info};
+use tracing::{error, info};
 
 /// Handles all instance-related commands.
 ///

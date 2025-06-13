@@ -1,6 +1,6 @@
 use crate::cli::{SortOrder, VersionTypeFilter};
 use crate::launcher;
-use log::{error, info};
+use tracing::{error, info};
 
 /// Options for listing Minecraft versions
 #[derive(Debug)]

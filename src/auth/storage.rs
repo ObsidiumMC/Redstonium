@@ -1,9 +1,9 @@
 use crate::error::{AuthError, Result, ResultExt};
-use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use time::{Duration, OffsetDateTime};
 use tokio::fs;
+use tracing::{debug, info, warn};
 
 use super::AuthResult;
 

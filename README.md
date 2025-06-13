@@ -1,299 +1,142 @@
-# Rustified
+# rustified
 
-[![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![GitHub release](https://img.shields.io/github/v/release/OmarAfet/rustified)](https://github.com/OmarAfet/rustified/releases)
-[![CI](https://github.com/OmarAfet/rustified/workflows/CI/badge.svg)](https://github.com/OmarAfet/rustified/actions)
+A command-line Minecraft launcher written in Rust.
 
-A high-performance, cross-platform Minecraft launcher written in Rust that provides a modern CLI experience for managing and launching Minecraft instances.
+`rustified` provides a text-based interface for launching and managing Minecraft instances, designed for automation, scripting, and environments where a graphical launcher isn't suitable or preferred.
 
 ## Features
 
-### **Secure Authentication**
-- Microsoft OAuth 2.0 integration with Xbox Live authentication
-- Secure token storage and automatic refresh
-- Full support for Microsoft/Mojang accounts
+Based on the current implementation and planned features:
 
-### **Instance Management**
-- Create and manage multiple Minecraft instances
-- Per-instance settings (memory allocation, Java args, game directory)
-- Quick instance switching and launch tracking
+*   **Microsoft Account Authentication:** Securely authenticate using the standard Microsoft/Xbox Live flow.
+*   **Instance Management:** Create, list, configure, and delete isolated Minecraft instances.
+*   **Multi-Version Support:** Launch different Minecraft versions using their specific requirements.
+*   **Automatic File Management:** Downloads required game JARs, libraries, and assets with integrity verification (SHA1).
+*   **Automatic Java Detection:** Scans for and selects the appropriate Java Runtime Environment (JRE) based on the Minecraft version.
+*   **Cross-Platform:** Designed to work on Windows, macOS, and Linux.
+*   **Customizable:** Configure instance memory allocation and other settings.
 
-### **Smart Java Management**
-- Automatic Java detection across platforms
-- Version compatibility matching for Minecraft versions
-- Support for multiple Java installations
+## Installation
 
-### **Efficient File Management**
-- Parallel downloading with SHA1 verification
-- Incremental updates and smart caching
-- Support for all Minecraft versions (Alpha, Beta, Release, Snapshot)
+### Prerequisites
 
-### **Performance Optimized**
-- Concurrent asset and library downloads
-- Memory-efficient file processing
-- Fast startup times with cached authentication
+*   [Rust](https://rustup.rs/) (latest stable recommended)
+*   Git
 
-### **Cross-Platform Support**
-- Windows, macOS, and Linux compatibility
-- Native file system integration
-- Platform-specific optimizations
+### Building from source
 
-## Quick Start
-
-### Installation
-
-#### From Releases (Recommended)
-Download the latest binary from [GitHub Releases](https://github.com/OmarAfet/rustified/releases).
-
-#### From Source
-```bash
-# Clone the repository
-git clone https://github.com/OmarAfet/rustified.git
-cd rustified
-
-# Build and install
-cargo install --path .
-```
-
-### First Launch
-
-1. **Create your first instance:**
+1.  Clone the repository:
     ```bash
-    rustified instance create my-instance 1.20.4
+    git clone https://github.com/OmarAfet/rustified.git
+    cd rustified
     ```
-
-2. **Launch Minecraft:**
+2.  Build the project:
     ```bash
-    rustified launch my-instance
+    cargo build --release
     ```
-
-The launcher will automatically handle authentication and download necessary files.
+    The executable will be located at `./target/release/rustified`.
 
 ## Usage
 
-### Version Management
+Run `./target/release/rustified --help` to see the full list of commands.
 
 ```bash
-# List available Minecraft versions
-rustified list
-
-# Show only release versions
-rustified list --releases-only
-
-# Filter versions and limit results
-rustified list --filter "1.20" --limit 5
-
-# Show installation status
-rustified list --show-installed
+./target/release/rustified --help
 ```
 
-### Instance Management
+Here are some common commands:
+
+### List Available Versions
+
+Fetches and displays a list of available Minecraft versions from the Mojang manifest.
 
 ```bash
-# List all instances
-rustified instance list
-
-# Create a new instance
-rustified instance create <name> <version> [description]
-
-# Delete an instance
-rustified instance delete <name>
-
-# Show instance details
-rustified instance info <name>
-
-# Set memory allocation (in MB)
-rustified instance memory <amount>
+./target/release/rustified list
 ```
 
-### Game Operations
+You can filter by type, search, limit results, and more:
 
 ```bash
-# Launch an instance
-rustified launch <instance-name>
-
-# Skip file verification for faster launch
-rustified launch <instance-name> --skip-verification
-
-# Prepare/download a version without launching
-rustified prepare <version>
+./target/release/rustified list --limit 20 --types release snapshot --filter 1.20 --show-installed
 ```
 
 ### Authentication
 
+`rustified` uses Microsoft account authentication. The `auth` command allows you to manage your login session. You will be prompted to authenticate via your web browser on the first `launch` attempt if no valid session is found.
+
 ```bash
-# Check authentication status
-rustified auth status
+# Check current authentication status
+./target/release/rustified auth status
 
 # Clear cached authentication
-rustified auth clear
+./target/release/rustified auth clear
 
-# Force re-authentication
-rustified auth refresh
+# Force a re-authentication flow
+./target/release/rustified auth refresh
+```
+
+### Instance Management
+
+Instances provide isolated game environments.
+
+```bash
+# List all instances
+./target/release/rustified instance list
+
+# Create a new instance named 'my-world' using Minecraft version '1.20.4'
+# Replace '1.20.4' with a version from 'rustified list'
+./target/release/rustified instance create my-world 1.20.4 --description "My main survival world"
+
+# Show details for an instance
+./target/release/rustified instance info my-world
+
+# Set memory allocation (in MB) for an instance (e.g., 4GB)
+./target/release/rustified instance memory my-world 4096
+
+# Delete an instance
+./target/release/rustified instance delete my-world
+```
+
+### Prepare Game Files
+
+Download the necessary files for a specific Minecraft version without launching the game. This is useful for pre-downloading.
+
+```bash
+# Prepare game files for version 1.20.4
+./target/release/rustified prepare 1.20.4
+```
+
+### Launch Game
+
+Launch a specific instance. If it's the first time launching this instance or version, it will automatically perform authentication and download required files.
+
+```bash
+# Launch the 'my-world' instance
+./target/release/rustified launch my-world
 ```
 
 ### Java Management
 
+Check detected Java installations and recommended versions.
+
 ```bash
 # List detected Java installations
-rustified java list
+./target/release/rustified java list
 
-# Get recommended Java version for Minecraft version
-rustified java recommend <minecraft-version>
+# Show recommended Java version for a Minecraft version
+./target/release/rustified java recommend 1.20.4
 ```
 
-## Architecture
+## Contributing
 
-Rustified is built with a modular architecture:
+Contributions are welcome! Please see the [`CONTRIBUTING.md`](CONTRIBUTING.md) file for guidelines on how to contribute, set up your development environment, and run checks.
 
-```
-src/
-├── auth/           # Microsoft OAuth 2.0 & Minecraft authentication
-├── commands/       # CLI command implementations
-├── launcher/       # Core launcher functionality
-│   ├── files.rs    # Download manager with parallel processing
-│   ├── game.rs     # Game launch logic and argument handling
-│   ├── instance.rs # Instance configuration management
-│   └── java.rs     # Java detection and version matching
-├── cli.rs          # Command-line interface definitions
-├── error.rs        # Custom error types and handling
-└── main.rs         # Application entry point
-```
+We have a strict [Dead Code Policy](CONTRIBUTING.md#dead-code-policy). Please ensure your code passes `cargo clippy --all-targets --all-features -- -D warnings -D dead_code` before submitting a Pull Request. The `./scripts/prepare-pr.sh` script can help automate checks.
 
-### Key Components
+## TODO
 
-- **FileManager**: Handles parallel downloads, SHA1 verification, and caching
-- **GameLauncher**: Constructs JVM arguments and launches Minecraft processes
-- **InstanceManager**: Manages instance configurations and settings
-- **JavaManager**: Detects and manages Java installations
-- **AuthManager**: Handles the complete Microsoft → Xbox Live → Minecraft auth flow
-
-## Configuration
-
-### Instance Settings
-
-Each instance supports customizable settings:
-
-```rust
-// Instance configuration example
-{
-     "name": "my-instance",
-     "version": "1.20.4",
-     "description": "My custom instance",
-     "settings": {
-          "memory_mb": 4096,
-          "java_args": ["-XX:+UseG1GC"],
-          "resolution": {"width": 1920, "height": 1080}
-     },
-     "last_used": "2024-01-15T10:30:00Z"
-}
-```
-
-### Authentication Storage
-
-Authentication tokens are securely stored in:
-- **Windows**: `%APPDATA%/rustified/auth.json`
-- **macOS**: `~/Library/Application Support/rustified/auth.json`
-- **Linux**: `~/.local/share/rustified/auth.json`
-
-## Development
-
-### Prerequisites
-
-- Rust 1.70+ ([rustup.rs](https://rustup.rs/))
-- Git
-
-### Building
-
-```bash
-# Clone the repository
-git clone https://github.com/OmarAfet/rustified.git
-cd rustified
-
-# Build in debug mode
-cargo build
-
-# Build optimized release
-cargo build --release
-
-# Run tests
-cargo test
-
-# Run with logging
-RUST_LOG=debug cargo run -- list
-```
-
-### Contributing
-
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
-
-### Code Quality
-
-The project maintains high code quality with:
-- Comprehensive error handling with custom error types
-- Extensive logging and debugging capabilities
-- Performance optimizations for file operations
-- Memory-safe concurrent operations
-- Cross-platform compatibility testing
-
-## Performance
-
-Rustified is designed for performance:
-
-- **Parallel Downloads**: Up to 50 concurrent asset downloads
-- **Smart Caching**: Incremental updates with SHA1 verification
-- **Memory Efficient**: Optimized for large modpacks and asset collections
-- **Fast Startup**: Cached authentication and version data
-
-## Troubleshooting
-
-### Common Issues
-
-**Authentication fails:**
-```bash
-# Clear cached auth and try again
-rustified auth clear
-rustified auth refresh
-```
-
-**Java not detected:**
-```bash
-# Check Java installations
-rustified java list
-
-# Ensure Java 17+ is installed for modern Minecraft versions
-```
-
-**Download failures:**
-```bash
-# Retry with debug logging
-RUST_LOG=debug rustified prepare <version>
-```
-
-### Debug Mode
-
-Enable detailed logging:
-```bash
-RUST_LOG=debug rustified <command>
-```
+You can find the project's development status and future plans in the [`TODO.md`](TODO.md) file.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Roadmap
-
-- [ ] **GUI Interface**: Native desktop application
-- [ ] **Mod Support**: Forge, Fabric, and Quilt integration
-- [ ] **Modpack Management**: Import/export and automatic installation
-- [ ] **Profile Sharing**: Community instance sharing
-- [ ] **Advanced Java Management**: Automatic Java downloading
-
----
-
-<div align="center">
-    <strong>Made with ❤️ and 🦀 Rust</strong>
-    <br>
-    <a href="https://github.com/OmarAfet/rustified">⭐ Star this project on GitHub</a>
-</div>
+This project is licensed under the [MIT License](LICENSE).

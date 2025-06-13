@@ -1,12 +1,12 @@
 use crate::error::{FileManagerError, Result, ResultExt};
 use crate::launcher;
-use log::{debug, info, warn};
 use reqwest::Client;
 use sha1::{Digest, Sha1};
 use std::fs::File;
 use std::path::Path;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
+use tracing::{debug, info, warn};
 use zip::ZipArchive;
 
 use crate::launcher::minecraft_dir::MinecraftDir;

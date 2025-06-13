@@ -1,6 +1,6 @@
 use crate::error::{Result, ResultExt};
-use log::{debug, info, trace, warn};
-use reqwest::Client; // Import Client
+use reqwest::Client;
+use tracing::{debug, info, trace, warn}; // Import Client
 
 // Declare modules
 mod constants;

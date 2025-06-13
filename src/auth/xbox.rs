@@ -1,7 +1,7 @@
 use crate::error::{AuthError, Result, ResultExt};
-use log::{debug, error, trace};
 use reqwest::Client;
 use reqwest::header::{ACCEPT, CONTENT_TYPE};
+use tracing::{debug, error, trace};
 
 use super::constants::{XBL_AUTH_URL, XSTS_AUTH_URL};
 use super::models::{

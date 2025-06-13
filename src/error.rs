@@ -1,7 +1,8 @@
 use std::fmt;
+use thiserror::Error;
 
 /// Custom error type for the Rustified launcher
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum RustifiedError {
     /// Authentication-related errors
     Auth(AuthError),
@@ -24,79 +25,105 @@ pub enum RustifiedError {
 }
 
 /// Authentication-specific errors
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum AuthError {
     /// Microsoft authentication failed
+    #[error("Microsoft authentication failed: {0}")]
     MicrosoftAuth(String),
     /// Xbox Live authentication failed
+    #[error("Xbox Live authentication failed: {0}")]
     XboxAuth(String),
     /// Minecraft authentication failed
+    #[error("Minecraft authentication failed: {0}")]
     MinecraftAuth(String),
     /// Game ownership verification failed
+    #[error("Game ownership verification failed: {0}")]
     GameOwnership(String),
     /// Profile retrieval failed
+    #[error("Profile retrieval failed: {0}")]
     ProfileRetrieval(String),
     /// Token cache operations failed
+    #[error("Cache operation failed: {0}")]
     CacheError(String),
     /// OAuth flow errors
+    #[error("OAuth flow failed: {0}")]
     OAuthError(String),
 }
 
 /// Java-related errors
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum JavaError {
     /// Java installation not found
+    #[error("Java installation not found: {0}")]
     NotFound(String),
     /// Java version parsing failed
+    #[error("Java version parsing failed: {0}")]
     VersionParsing(String),
     /// Java execution failed
+    #[error("Java execution failed: {0}")]
     ExecutionFailed(String),
     /// Unsupported Java version
+    #[error("Unsupported Java version: {0}")]
     UnsupportedVersion(String),
 }
 
 /// Game launching errors
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum GameError {
     /// Version not found
+    #[error("Version not found: {0}")]
     VersionNotFound(String),
     /// Invalid version format
+    #[error("Invalid version: {0}")]
     InvalidVersion(String),
     /// Game preparation failed
+    #[error("Game preparation failed: {0}")]
     PreparationFailed(String),
     /// Game launch failed
+    #[error("Game launch failed: {0}")]
     LaunchFailed(String),
     /// Assets download failed
+    #[error("Assets download failed: {0}")]
     AssetsDownload(String),
     /// Libraries download failed
+    #[error("Libraries download failed: {0}")]
     LibrariesDownload(String),
 }
 
 /// Instance management errors
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum InstanceError {
     /// Instance not found
+    #[error("Instance not found: {0}")]
     NotFound(String),
     /// Instance already exists
+    #[error("Instance already exists: {0}")]
     AlreadyExists(String),
     /// Invalid instance configuration
+    #[error("Invalid instance configuration: {0}")]
     InvalidConfig(String),
     /// Instance creation failed
+    #[error("Instance creation failed: {0}")]
     CreationFailed(String),
     /// Instance deletion failed
+    #[error("Instance deletion failed: {0}")]
     DeletionFailed(String),
 }
 
 /// File manager errors
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum FileManagerError {
     /// File download failed
+    #[error("File download failed: {0}")]
     DownloadFailed(String),
     /// File verification failed
+    #[error("File verification failed: {0}")]
     VerificationFailed(String),
     /// Archive extraction failed
+    #[error("Archive extraction failed: {0}")]
     ExtractionFailed(String),
     /// Directory creation failed
+    #[error("Directory creation failed: {0}")]
     DirectoryCreation(String),
 }
 
@@ -106,14 +133,14 @@ pub type Result<T> = std::result::Result<T, RustifiedError>;
 impl fmt::Display for RustifiedError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let error_msg = match self {
-            Self::Auth(e) => format!("Authentication error: {e}"),
+            Self::Auth(e) => e.to_string(),
             Self::Io(e) => format!("I/O error: {e}"),
             Self::Network(e) => format!("Network error: {e}"),
             Self::Json(e) => format!("JSON parsing error: {e}"),
-            Self::Java(e) => format!("Java error: {e}"),
-            Self::Game(e) => format!("Game error: {e}"),
-            Self::Instance(e) => format!("Instance error: {e}"),
-            Self::FileManager(e) => format!("File manager error: {e}"),
+            Self::Java(e) => e.to_string(),
+            Self::Game(e) => e.to_string(),
+            Self::Instance(e) => e.to_string(),
+            Self::FileManager(e) => e.to_string(),
             Self::Generic(msg) => msg.clone(),
         };
 
@@ -123,84 +150,6 @@ impl fmt::Display for RustifiedError {
         )
     }
 }
-
-impl fmt::Display for AuthError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::MicrosoftAuth(msg) => write!(f, "Microsoft authentication failed: {msg}"),
-            Self::XboxAuth(msg) => write!(f, "Xbox Live authentication failed: {msg}"),
-            Self::MinecraftAuth(msg) => write!(f, "Minecraft authentication failed: {msg}"),
-            Self::GameOwnership(msg) => write!(f, "Game ownership verification failed: {msg}"),
-            Self::ProfileRetrieval(msg) => write!(f, "Profile retrieval failed: {msg}"),
-            Self::CacheError(msg) => write!(f, "Cache operation failed: {msg}"),
-            Self::OAuthError(msg) => write!(f, "OAuth flow failed: {msg}"),
-        }
-    }
-}
-
-impl fmt::Display for JavaError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::NotFound(msg) => write!(f, "Java installation not found: {msg}"),
-            Self::VersionParsing(msg) => write!(f, "Java version parsing failed: {msg}"),
-            Self::ExecutionFailed(msg) => write!(f, "Java execution failed: {msg}"),
-            Self::UnsupportedVersion(msg) => write!(f, "Unsupported Java version: {msg}"),
-        }
-    }
-}
-
-impl fmt::Display for GameError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::VersionNotFound(msg) => write!(f, "Version not found: {msg}"),
-            Self::InvalidVersion(msg) => write!(f, "Invalid version: {msg}"),
-            Self::PreparationFailed(msg) => write!(f, "Game preparation failed: {msg}"),
-            Self::LaunchFailed(msg) => write!(f, "Game launch failed: {msg}"),
-            Self::AssetsDownload(msg) => write!(f, "Assets download failed: {msg}"),
-            Self::LibrariesDownload(msg) => write!(f, "Libraries download failed: {msg}"),
-        }
-    }
-}
-
-impl fmt::Display for InstanceError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::NotFound(msg) => write!(f, "Instance not found: {msg}"),
-            Self::AlreadyExists(msg) => write!(f, "Instance already exists: {msg}"),
-            Self::InvalidConfig(msg) => write!(f, "Invalid instance configuration: {msg}"),
-            Self::CreationFailed(msg) => write!(f, "Instance creation failed: {msg}"),
-            Self::DeletionFailed(msg) => write!(f, "Instance deletion failed: {msg}"),
-        }
-    }
-}
-
-impl fmt::Display for FileManagerError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::DownloadFailed(msg) => write!(f, "File download failed: {msg}"),
-            Self::VerificationFailed(msg) => write!(f, "File verification failed: {msg}"),
-            Self::ExtractionFailed(msg) => write!(f, "Archive extraction failed: {msg}"),
-            Self::DirectoryCreation(msg) => write!(f, "Directory creation failed: {msg}"),
-        }
-    }
-}
-
-impl std::error::Error for RustifiedError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::Io(e) => Some(e),
-            Self::Network(e) => Some(e),
-            Self::Json(e) => Some(e),
-            _ => None,
-        }
-    }
-}
-
-impl std::error::Error for AuthError {}
-impl std::error::Error for JavaError {}
-impl std::error::Error for GameError {}
-impl std::error::Error for InstanceError {}
-impl std::error::Error for FileManagerError {}
 
 // Conversions from standard library errors
 impl From<std::io::Error> for RustifiedError {
@@ -308,12 +257,6 @@ impl From<zip::result::ZipError> for RustifiedError {
         Self::FileManager(FileManagerError::ExtractionFailed(format!(
             "Zip operation failed: {err}"
         )))
-    }
-}
-
-impl From<anyhow::Error> for RustifiedError {
-    fn from(err: anyhow::Error) -> Self {
-        Self::Generic(format!("Anyhow error: {err}"))
     }
 }
 
@@ -466,7 +409,7 @@ impl FileManagerError {
 
 /// Extension trait to add context to any Result
 pub trait ResultExt<T> {
-    /// Add context to a Result (similar to `anyhow::Context`)
+    /// Add context to a Result
     ///
     /// # Errors
     ///

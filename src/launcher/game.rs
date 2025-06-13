@@ -1,7 +1,7 @@
-use anyhow::{Context, Result, anyhow};
-use log::{debug, error, info};
+use crate::error::{GameError, Result, ResultExt};
 use std::env;
 use std::process::{Command, Stdio};
+use tracing::{debug, error, info};
 
 use crate::auth::AuthResult;
 use crate::launcher::instance::InstanceConfig;
@@ -92,7 +92,11 @@ impl GameLauncher {
         if status.success() {
             info!("Minecraft exited successfully");
         } else {
-            return Err(anyhow!("Minecraft exited with code: {:?}", status.code()));
+            return Err(GameError::launch_failed(format!(
+                "Minecraft exited with code: {:?}",
+                status.code()
+            ))
+            .into());
         }
 
         Ok(())
@@ -177,7 +181,11 @@ impl GameLauncher {
             classpath.push(game_jar.to_string_lossy().to_string());
         } else {
             error!("Main game JAR not found: {}", game_jar.display());
-            return Err(anyhow!("Main game JAR not found: {}", game_jar.display()));
+            return Err(GameError::launch_failed(format!(
+                "Main game JAR not found: {}",
+                game_jar.display()
+            ))
+            .into());
         }
 
         // Add library JARs
@@ -209,7 +217,7 @@ impl GameLauncher {
                         classpath.push(full_path.to_string_lossy().to_string());
                     } else {
                         // This could happen if download_libraries failed or json is inconsistent
-                        log::warn!(
+                        tracing::warn!(
                             "Library artifact for {} (expected at {}) not found, skipping classpath addition.",
                             library.name,
                             full_path.display()
@@ -237,7 +245,10 @@ impl GameLauncher {
 
         if classpath.is_empty() {
             error!("Classpath is empty! This will likely cause a NoClassDefFoundError.");
-            return Err(anyhow!("Classpath construction failed, no entries found."));
+            return Err(GameError::launch_failed(
+                "Classpath construction failed, no entries found.".to_string(),
+            )
+            .into());
         }
 
         // Join classpath with platform-specific separator
@@ -560,7 +571,9 @@ impl GameLauncher {
             "user_type" => Ok("msa".to_string()),
             "game_directory" => Ok(game_dir.to_string_lossy().to_string()),
             "assets_root" => Ok(minecraft_dir.assets_dir().to_string_lossy().to_string()),
-            _ => Err(anyhow!("Unknown legacy variable: {}", var_name)),
+            _ => {
+                Err(GameError::launch_failed(format!("Unknown legacy variable: {var_name}")).into())
+            }
         }
     }
 

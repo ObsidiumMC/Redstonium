@@ -1,9 +1,9 @@
-use anyhow::{Context, Result};
-use log::{debug, info, warn};
+use crate::error::{InstanceError, Result, ResultExt};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tokio::fs;
+use tracing::{debug, info, warn};
 
 use crate::launcher::minecraft_dir::MinecraftDir;
 
@@ -187,7 +187,10 @@ impl InstanceManager {
     ) -> Result<()> {
         // Check if instance already exists
         if self.instances.contains_key(&name) {
-            return Err(anyhow::anyhow!("Instance '{}' already exists", name));
+            return Err(InstanceError::already_exists(
+                format!("Instance '{name}' already exists",),
+            )
+            .into());
         }
 
         // Validate instance name (alphanumeric, hyphens, underscores only)
@@ -195,28 +198,32 @@ impl InstanceManager {
             .chars()
             .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
         {
-            return Err(anyhow::anyhow!(
+            return Err(InstanceError::invalid_config(
                 "Instance name can only contain letters, numbers, hyphens, and underscores"
-            ));
+                    .to_string(),
+            )
+            .into());
         }
 
         // Enforce a maximum instance name length (e.g., 64 chars)
         if name.len() > MAX_INSTANCE_NAME_LEN {
-            return Err(anyhow::anyhow!(
+            return Err(InstanceError::invalid_config(format!(
                 "Instance name is too long ({} characters). Maximum allowed is {} characters.",
                 name.len(),
                 MAX_INSTANCE_NAME_LEN
-            ));
+            ))
+            .into());
         }
 
         // Validate version exists in manifest
         let manifest = file_manager.get_version_manifest().await?;
         let valid_version = manifest.versions.iter().any(|v| v.id == version);
         if !valid_version {
-            return Err(anyhow::anyhow!(
-                "Minecraft version '{}' does not exist. Use 'rustified list' to see valid versions.",
-                version
-            ));
+            return Err(InstanceError::invalid_config(format!(
+                "Minecraft version '{version}' does not exist. Use 'rustified list' to see valid versions.",
+
+            ))
+            .into());
         }
 
         let config = InstanceConfig {
@@ -246,7 +253,9 @@ impl InstanceManager {
     /// Delete an instance
     pub async fn delete_instance(&mut self, name: &str) -> Result<()> {
         if !self.instances.contains_key(name) {
-            return Err(anyhow::anyhow!("Instance '{}' does not exist", name));
+            return Err(
+                InstanceError::not_found(format!("Instance '{name}' does not exist")).into(),
+            );
         }
 
         // Remove from disk
@@ -295,14 +304,16 @@ impl InstanceManager {
         // Set a reasonable upper bound for memory (e.g., 128 GB)
         const MAX_MEMORY_MB: u32 = 128 * 1024; // 131072 MB
         if memory_mb == 0 {
-            return Err(anyhow::anyhow!("Memory must be greater than 0 MB"));
+            return Err(InstanceError::invalid_config(
+                "Memory must be greater than 0 MB".to_string(),
+            )
+            .into());
         }
         if memory_mb > MAX_MEMORY_MB {
-            return Err(anyhow::anyhow!(
-                "Memory value too large ({} MB). Maximum allowed is {} MB (128 GB)",
-                memory_mb,
-                MAX_MEMORY_MB
-            ));
+            return Err(InstanceError::invalid_config(format!(
+                "Memory value too large ({memory_mb} MB). Maximum allowed is {MAX_MEMORY_MB} MB (128 GB)"
+            ))
+            .into());
         }
         if let Some(config) = self.instances.get_mut(name) {
             config.settings.memory_mb = Some(memory_mb);
@@ -311,7 +322,9 @@ impl InstanceManager {
             self.save_instance_config(&config_clone).await?;
             info!("Set memory for instance '{name}' to {memory_mb}MB");
         } else {
-            return Err(anyhow::anyhow!("Instance '{}' does not exist", name));
+            return Err(
+                InstanceError::not_found(format!("Instance '{name}' does not exist")).into(),
+            );
         }
         Ok(())
     }
@@ -347,7 +360,7 @@ impl InstanceManager {
         if !options_file.exists() {
             let default_options = "version:3343\nlang:en_us\n";
             std::fs::write(&options_file, default_options)
-                .with_context(|| "Failed to create default options.txt")?;
+                .with_context(|| "Failed to create default options.txt".to_string())?;
         }
 
         Ok(instance_dir)

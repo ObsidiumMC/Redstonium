@@ -1,16 +1,16 @@
 use crate::error::{AuthError, Result};
-use log::{debug, error, info, trace, warn};
 use oauth2::{AuthUrl, ClientId, CsrfToken, RedirectUrl, Scope, TokenUrl, basic::BasicClient};
 use tokio::sync::oneshot;
 use tokio::task;
+use tracing::{debug, error, info, trace, warn};
 
 use super::constants::{MS_AUTH_URL, MS_TOKEN_URL, REDIRECT_URI};
 
 /// Starts a local server to receive the OAuth redirect and extract the code
 fn start_local_server(tx: tokio::sync::oneshot::Sender<Result<String>>) {
-    use log::{debug, error, info, warn};
     use std::net::SocketAddr;
     use tiny_http::{Response, Server};
+    use tracing::{debug, error, info, warn};
     use url::Url;
 
     let addr: SocketAddr = match "127.0.0.1:8080".parse() {

@@ -1,5 +1,5 @@
 use crate::cli::AuthCommands;
-use log::info;
+use tracing::info;
 
 /// Handles authentication-related commands.
 ///

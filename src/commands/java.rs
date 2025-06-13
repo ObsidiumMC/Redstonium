@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 
 use crate::cli::JavaCommands;
-use log::info;
+use tracing::info;
 
 pub fn handle_java_command(launcher: &crate::launcher::Launcher, action: JavaCommands) {
     // Lazily initialize Java installations for Java commands

@@ -7,9 +7,11 @@
 - Parallel file downloads with SHA1 verification
 - Cross-platform support (Windows, macOS, Linux)
 - CI/CD pipeline with GitHub Actions
+- Replace `anyhow` with `thiserror`
+- Custom tracing-based logger with colored output
 
 ## In Progress
-- Replace `anyhow` with Custom Errors
+
 
 ## To Do
 - GUI
