@@ -9,14 +9,10 @@ mod logger;
 
 use crate::cli::{Cli, Commands};
 use clap::Parser;
-use dotenvy::dotenv;
 use tracing::{debug, error, info};
 
 #[tokio::main]
 async fn main() -> crate::error::Result<()> {
-    // Load environment variables from .env file
-    dotenv().ok();
-
     // Initialize the logger with custom format
     logger::init();
 

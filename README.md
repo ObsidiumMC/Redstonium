@@ -135,7 +135,35 @@ We have a strict [Dead Code Policy](CONTRIBUTING.md#dead-code-policy). Please en
 
 ## TODO
 
-You can find the project's development status and future plans in the [`TODO.md`](TODO.md) file.
+### Finished
+- Basic CLI launcher functionality
+- Microsoft OAuth 2.0 authentication
+- Instance management (create, delete, list, info)
+- Java detection and version matching
+- Multi-version Minecraft support
+- Parallel file downloads with SHA1 verification
+- Cross-platform support (Windows, macOS, Linux)
+- CI/CD pipeline with GitHub Actions
+- Replace `anyhow` with `thiserror`
+- Custom tracing-based logger with colored output
+
+### In Progress
+
+
+### To Do
+- Add more tests
+- Mods feature (installing, enabling/disabling)
+- Wiki/Documentation improvements (expanding on usage, troubleshooting)
+- Implement offline mode launch (using cached credentials/files)
+- Allow setting custom game resolution via instance config
+- Add command to configure a default server for instances (address, port)
+- Add progress indicators for file downloads and installations
+- Implement command to list locally installed Minecraft versions
+- Implement command to delete locally installed Minecraft versions
+- Add a launcher configuration file (for global settings like default memory, download paths)
+- Improve error handling and messages for specific failure points
+- Implement ability to launch with arbitrary JVM and game arguments per instance
+
 
 ## License
 
