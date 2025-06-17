@@ -69,9 +69,9 @@ jobs:
           # Get commit history since the last tag (or all commits if no previous tag)
           LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           if [ -n "$LAST_TAG" ]; then
-            COMMITS=$(git log --oneline --no-merges ${LAST_TAG}..HEAD | tac)
+            COMMITS=$(git log --oneline --no-merges --reverse ${LAST_TAG}..HEAD)
           else
-            COMMITS=$(git log --oneline --no-merges | tac)
+            COMMITS=$(git log --oneline --no-merges --reverse)
           fi
           
           # Format commits as "MESSAGE (HASH)"
@@ -80,7 +80,7 @@ jobs:
             if [ -n "$line" ]; then
               HASH=$(echo "$line" | cut -d' ' -f1)
               MESSAGE=$(echo "$line" | cut -d' ' -f2-)
-              RELEASE_BODY="${RELEASE_BODY}${MESSAGE} (${HASH})"$'\n'
+              RELEASE_BODY="${MESSAGE} (${HASH})"$'\n'"${RELEASE_BODY}"
             fi
           done <<< "$COMMITS"
           
