@@ -28,14 +28,14 @@ You need the Rust toolchain installed to build Redstonium.
     cargo build --release
     ```
 
-3.  The executable will be located at `target/release/rustified`. You can move this file to a directory in your system's PATH to use it globally.
+3.  The executable will be located at `target/release/Redstonium`. You can move this file to a directory in your system's PATH to use it globally.
 
 ## Usage
 
 Redstonium is controlled via subcommands. You can see all available commands and options by running:
 
 ```sh
-rustified --help
+Redstonium --help
 ```
 
 ### Basic Workflow
@@ -44,14 +44,14 @@ rustified --help
     First, create an instance for a specific Minecraft version. For example, to create an instance named `vanilla-1-21` for Minecraft `1.21`:
 
     ```sh
-    rustified instance create vanilla-1-21 1.21
+    Redstonium instance create vanilla-1-21 1.21
     ```
 
 2.  **Launch the instance:**
     The first time you launch an instance, Redstonium will guide you through the Microsoft authentication process in your web browser. After that, your login will be cached.
 
     ```sh
-    rustified launch vanilla-1-21
+    Redstonium launch vanilla-1-21
     ```
 
 ### Other Commands
@@ -59,43 +59,43 @@ rustified --help
 **List available Minecraft versions:**
 ```sh
 # Show the 10 newest releases and snapshots
-rustified list
+Redstonium list
 
 # Show only the 5 latest release versions
-rustified list --releases-only --limit 5
+Redstonium list --releases-only --limit 5
 
 # Filter versions by a pattern
-rustified list --filter "1.18"
+Redstonium list --filter "1.18"
 ```
 
 **Manage instances:**
 ```sh
 # List all created instances
-rustified instance list
+Redstonium instance list
 
 # Delete an instance
-rustified instance delete vanilla-1-21
+Redstonium instance delete vanilla-1-21
 
 # Set the memory for an instance to 4096 MB
-rustified instance memory vanilla-1-21 4096
+Redstonium instance memory vanilla-1-21 4096
 ```
 
 **Manage authentication:**
 ```sh
 # Check your current authentication status
-rustified auth status
+Redstonium auth status
 
 # Clear the cached login credentials
-rustified auth clear
+Redstonium auth clear
 ```
 
 **Manage Java:**
 ```sh
 # List detected Java installations
-rustified java list
+Redstonium java list
 
 # See the recommended Java version for a Minecraft version
-rustified java recommend 1.21
+Redstonium java recommend 1.21
 ```
 
 ## License
