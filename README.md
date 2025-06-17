@@ -2,169 +2,102 @@
 
 A command-line Minecraft launcher written in Rust.
 
-`Rustified` provides a text-based interface for launching and managing Minecraft instances, designed for automation, scripting, and environments where a graphical launcher isn't suitable or preferred.
+Rustified is a lightweight, cross-platform tool for managing and launching Minecraft from your terminal. It handles authentication, version management, and game instances, providing a simple interface for automation and server-side setups.
 
 ## Features
 
-Based on the current implementation and planned features:
-
-*   **Microsoft Account Authentication:** Securely authenticate using the standard Microsoft/Xbox Live flow.
-*   **Instance Management:** Create, list, configure, and delete isolated Minecraft instances.
-*   **Multi-Version Support:** Launch different Minecraft versions using their specific requirements.
-*   **Automatic File Management:** Downloads required game JARs, libraries, and assets with integrity verification (SHA1).
-*   **Automatic Java Detection:** Scans for and selects the appropriate Java Runtime Environment (JRE) based on the Minecraft version.
-*   **Cross-Platform:** Designed to work on Windows, macOS, and Linux.
-*   **Customizable:** Configure instance memory allocation and other settings.
+- **Authentication**: Securely logs into your Microsoft account to authenticate with Minecraft services. Caches credentials for future sessions.
+- **Version Management**: Lists available Minecraft versions (releases, snapshots, etc.) and downloads all necessary game files, libraries, and assets.
+- **Instance Management**: Create, list, and delete separate game instances, each with its own version and settings.
+- **Configuration**: Set instance-specific memory allocation.
+- **Java Detection**: Automatically finds suitable Java installations on your system.
+- **Cross-Platform**: Works on Windows, macOS, and Linux.
 
 ## Installation
 
-### Prerequisites
-
-*   [Rust](https://rustup.rs/) (latest stable recommended)
-*   Git
-
-### Building from source
+You need the Rust toolchain installed to build Rustified.
 
 1.  Clone the repository:
-    ```bash
+    ```sh
     git clone https://github.com/OmarAfet/Rustified.git
     cd Rustified
     ```
-2.  Build the project:
-    ```bash
+
+2.  Build the project for release:
+    ```sh
     cargo build --release
     ```
-    The executable will be located at `./target/release/Rustified`.
+
+3.  The executable will be located at `target/release/rustified`. You can move this file to a directory in your system's PATH to use it globally.
 
 ## Usage
 
-Run `./target/release/Rustified --help` to see the full list of commands.
+Rustified is controlled via subcommands. You can see all available commands and options by running:
 
-```bash
-./target/release/Rustified --help
+```sh
+rustified --help
 ```
 
-Here are some common commands:
+### Basic Workflow
 
-### List Available Versions
+1.  **Create an instance:**
+    First, create an instance for a specific Minecraft version. For example, to create an instance named `vanilla-1-21` for Minecraft `1.21`:
 
-Fetches and displays a list of available Minecraft versions from the Mojang manifest.
+    ```sh
+    rustified instance create vanilla-1-21 1.21
+    ```
 
-```bash
-./target/release/Rustified list
+2.  **Launch the instance:**
+    The first time you launch an instance, Rustified will guide you through the Microsoft authentication process in your web browser. After that, your login will be cached.
+
+    ```sh
+    rustified launch vanilla-1-21
+    ```
+
+### Other Commands
+
+**List available Minecraft versions:**
+```sh
+# Show the 10 newest releases and snapshots
+rustified list
+
+# Show only the 5 latest release versions
+rustified list --releases-only --limit 5
+
+# Filter versions by a pattern
+rustified list --filter "1.18"
 ```
 
-You can filter by type, search, limit results, and more:
-
-```bash
-./target/release/Rustified list --limit 20 --types release snapshot --filter 1.20 --show-installed
-```
-
-### Authentication
-
-`Rustified` uses Microsoft account authentication. The `auth` command allows you to manage your login session. You will be prompted to authenticate via your web browser on the first `launch` attempt if no valid session is found.
-
-```bash
-# Check current authentication status
-./target/release/Rustified auth status
-
-# Clear cached authentication
-./target/release/Rustified auth clear
-
-# Force a re-authentication flow
-./target/release/Rustified auth refresh
-```
-
-### Instance Management
-
-Instances provide isolated game environments.
-
-```bash
-# List all instances
-./target/release/Rustified instance list
-
-# Create a new instance named 'my-world' using Minecraft version '1.20.4'
-# Replace '1.20.4' with a version from 'Rustified list'
-./target/release/Rustified instance create my-world 1.20.4 --description "My main survival world"
-
-# Show details for an instance
-./target/release/Rustified instance info my-world
-
-# Set memory allocation (in MB) for an instance (e.g., 4GB)
-./target/release/Rustified instance memory my-world 4096
+**Manage instances:**
+```sh
+# List all created instances
+rustified instance list
 
 # Delete an instance
-./target/release/Rustified instance delete my-world
+rustified instance delete vanilla-1-21
+
+# Set the memory for an instance to 4096 MB
+rustified instance memory vanilla-1-21 4096
 ```
 
-### Prepare Game Files
+**Manage authentication:**
+```sh
+# Check your current authentication status
+rustified auth status
 
-Download the necessary files for a specific Minecraft version without launching the game. This is useful for pre-downloading.
-
-```bash
-# Prepare game files for version 1.20.4
-./target/release/Rustified prepare 1.20.4
+# Clear the cached login credentials
+rustified auth clear
 ```
 
-### Launch Game
-
-Launch a specific instance. If it's the first time launching this instance or version, it will automatically perform authentication and download required files.
-
-```bash
-# Launch the 'my-world' instance
-./target/release/Rustified launch my-world
-```
-
-### Java Management
-
-Check detected Java installations and recommended versions.
-
-```bash
+**Manage Java:**
+```sh
 # List detected Java installations
-./target/release/Rustified java list
+rustified java list
 
-# Show recommended Java version for a Minecraft version
-./target/release/Rustified java recommend 1.20.4
+# See the recommended Java version for a Minecraft version
+rustified java recommend 1.21
 ```
-
-## Contributing
-
-Contributions are welcome! Please see the [`CONTRIBUTING.md`](CONTRIBUTING.md) file for guidelines on how to contribute, set up your development environment, and run checks.
-
-We have a strict [Dead Code Policy](CONTRIBUTING.md#dead-code-policy). Please ensure your code passes `cargo clippy --all-targets --all-features -- -D warnings -D dead_code` before submitting a Pull Request. The `./scripts/prepare-pr.sh` script can help automate checks.
-
-## TODO
-
-### Finished
-- Basic CLI launcher functionality
-- Microsoft OAuth 2.0 authentication
-- Instance management (create, delete, list, info)
-- Java detection and version matching
-- Multi-version Minecraft support
-- Parallel file downloads with SHA1 verification
-- Cross-platform support (Windows, macOS, Linux)
-- CI/CD pipeline with GitHub Actions
-- Replace `anyhow` with `thiserror`
-- Custom tracing-based logger with colored output
-
-### In Progress
-
-
-### To Do
-- Add more tests
-- Mods feature (installing, enabling/disabling)
-- Wiki/Documentation improvements (expanding on usage, troubleshooting)
-- Implement offline mode launch (using cached credentials/files)
-- Allow setting custom game resolution via instance config
-- Add command to configure a default server for instances (address, port)
-- Add progress indicators for file downloads and installations
-- Implement command to list locally installed Minecraft versions
-- Implement command to delete locally installed Minecraft versions
-- Add a launcher configuration file (for global settings like default memory, download paths)
-- Improve error handling and messages for specific failure points
-- Implement ability to launch with arbitrary JVM and game arguments per instance
-
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

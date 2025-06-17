@@ -1,6 +1,6 @@
 use crate::error::{Result, ResultExt};
 use reqwest::Client;
-use tracing::{debug, info, trace, warn}; // Import Client
+use tracing::{debug, info, trace, warn};
 
 // Declare modules
 mod constants;
@@ -10,11 +10,9 @@ mod models;
 pub mod storage;
 mod xbox;
 
-// Re-export necessary items
-pub use models::AuthResult; // Only export AuthResult directly
+pub use models::AuthResult;
 use storage::AuthStorage;
 
-/// The main authentication function that orchestrates the entire Minecraft auth flow
 pub async fn authenticate() -> Result<AuthResult> {
     // Initialize auth storage
     let auth_storage =

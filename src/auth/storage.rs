@@ -35,7 +35,7 @@ impl AuthStorage {
             "windows" => {
                 let appdata = std::env::var("APPDATA")
                     .with_context(|| "APPDATA environment variable not found".to_string())?;
-                Ok(PathBuf::from(appdata).join("rustified").join("cache"))
+                Ok(PathBuf::from(appdata).join("Rustified").join("cache"))
             }
             "macos" => {
                 let home = std::env::var("HOME")
@@ -43,7 +43,7 @@ impl AuthStorage {
                 Ok(PathBuf::from(home)
                     .join("Library")
                     .join("Caches")
-                    .join("rustified"))
+                    .join("Rustified"))
             }
             "linux" => {
                 // Use XDG_CACHE_HOME if available, otherwise ~/.cache
@@ -54,7 +54,7 @@ impl AuthStorage {
                     },
                     PathBuf::from,
                 );
-                Ok(cache_dir.join("rustified"))
+                Ok(cache_dir.join("Rustified"))
             }
             _ => Err(AuthError::cache_error(format!(
                 "Unsupported operating system: {}",

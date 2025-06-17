@@ -143,7 +143,7 @@ impl GameLauncher {
 
         // Add Minecraft-specific system properties
         cmd.args([
-            "-Dminecraft.launcher.brand=rustified",
+            "-Dminecraft.launcher.brand=Rustified",
             "-Dminecraft.launcher.version=1.0.0",
         ]);
 
@@ -482,7 +482,7 @@ impl GameLauncher {
             "${version_type}",
             &format!("{:?}", version_info.version_type).to_lowercase(),
         );
-        resolved = resolved.replace("${launcher_name}", "rustified");
+        resolved = resolved.replace("${launcher_name}", "Rustified");
         resolved = resolved.replace("${launcher_version}", "1.0.0");
         resolved = resolved.replace(
             "${natives_directory}",
@@ -538,7 +538,7 @@ impl GameLauncher {
             "${version_type}",
             &format!("{:?}", version_info.version_type).to_lowercase(),
         );
-        resolved = resolved.replace("${launcher_name}", "rustified");
+        resolved = resolved.replace("${launcher_name}", "Rustified");
         resolved = resolved.replace("${launcher_version}", "1.0.0");
         resolved = resolved.replace(
             "${natives_directory}",

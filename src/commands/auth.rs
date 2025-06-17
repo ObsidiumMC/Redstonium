@@ -18,7 +18,7 @@ pub async fn handle_auth_command(action: AuthCommands) -> crate::error::Result<(
                 // Don't log the token for security
             } else {
                 info!("❌ No valid authentication found");
-                info!("  Run 'rustified launch <instance>' to authenticate");
+                info!("  Run 'Rustified launch <instance>' to authenticate");
             }
         }
         AuthCommands::Clear => {

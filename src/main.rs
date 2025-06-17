@@ -22,7 +22,10 @@ async fn main() -> crate::error::Result<()> {
 
     let cli = Cli::parse();
 
-    info!("Rustified Minecraft Launcher v{}", env!("CARGO_PKG_VERSION"));
+    info!(
+        "Rustified Minecraft Launcher v{}",
+        env!("CARGO_PKG_VERSION")
+    );
     info!("===================================");
 
     // Initialize the launcher

@@ -1,4 +1,4 @@
-//! Custom logging implementation for rustified
+//! Custom logging implementation for Rustified
 //!
 //! This module provides a beautifully formatted logger with colored output,
 //! custom time formatting, and structured logging capabilities.
@@ -91,7 +91,7 @@ where
 ///
 /// ```rust
 /// // Initialize the logger
-/// rustified::logger::init();
+/// Rustified::logger::init();
 /// ```
 pub fn init() {
     let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
