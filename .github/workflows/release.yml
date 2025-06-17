@@ -62,9 +62,36 @@ jobs:
             cd ..
             echo "asset_path=release/${RELEASE_NAME}.tar.gz" >> $GITHUB_OUTPUT
           fi
+      - name: Generate release body
+        id: release_body
+        shell: bash
+        run: |
+          # Get commit history since the last tag (or all commits if no previous tag)
+          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$LAST_TAG" ]; then
+            COMMITS=$(git log --oneline --no-merges ${LAST_TAG}..HEAD | tac)
+          else
+            COMMITS=$(git log --oneline --no-merges | tac)
+          fi
+          
+          # Format commits as "MESSAGE (HASH)"
+          RELEASE_BODY=""
+          while IFS= read -r line; do
+            if [ -n "$line" ]; then
+              HASH=$(echo "$line" | cut -d' ' -f1)
+              MESSAGE=$(echo "$line" | cut -d' ' -f2-)
+              RELEASE_BODY="${RELEASE_BODY}${MESSAGE} (${HASH})"$'\n'
+            fi
+          done <<< "$COMMITS"
+          
+          # Save to output (remove trailing newline)
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo -n "$RELEASE_BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           files: ${{ steps.prep.outputs.asset_path }}
+          body: ${{ steps.release_body.outputs.body }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
