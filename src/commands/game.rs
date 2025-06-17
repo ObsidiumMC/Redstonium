@@ -89,7 +89,7 @@ pub async fn list_versions(
 
     if is_using_defaults {
         info!(
-            "💡 Tip: Use 'Rustified list --help' to see filtering options like --types, --filter, --sort, and more!"
+            "💡 Tip: Use 'Redstonium list --help' to see filtering options like --types, --filter, --sort, and more!"
         );
     }
 
@@ -206,7 +206,7 @@ pub async fn launch_game(
             (Some(config_clone), version)
         } else {
             return Err(crate::error::InstanceError::not_found(format!(
-                "Instance '{instance_name}' does not exist. Use 'Rustified instance list' to see available instances or 'Rustified instance create' to create one."
+                "Instance '{instance_name}' does not exist. Use 'Redstonium instance list' to see available instances or 'Redstonium instance create' to create one."
             )).into());
         }
     };
@@ -221,7 +221,7 @@ pub async fn launch_game(
     {
         error!("Invalid Minecraft version: {resolved_version} : {e}");
         return Err(crate::error::GameError::invalid_version(format!(
-            "Instance '{instance_name}' uses an invalid Minecraft version ('{resolved_version}'). Use 'Rustified list' to see valid versions."
+            "Instance '{instance_name}' uses an invalid Minecraft version ('{resolved_version}'). Use 'Redstonium list' to see valid versions."
         )).into());
     }
 

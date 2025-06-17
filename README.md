@@ -1,8 +1,8 @@
-# Rustified
+# Redstonium
 
 A command-line Minecraft launcher written in Rust.
 
-Rustified is a lightweight, cross-platform tool for managing and launching Minecraft from your terminal. It handles authentication, version management, and game instances, providing a simple interface for automation and server-side setups.
+Redstonium is a lightweight, cross-platform tool for managing and launching Minecraft from your terminal. It handles authentication, version management, and game instances, providing a simple interface for automation and server-side setups.
 
 ## Features
 
@@ -15,12 +15,12 @@ Rustified is a lightweight, cross-platform tool for managing and launching Minec
 
 ## Installation
 
-You need the Rust toolchain installed to build Rustified.
+You need the Rust toolchain installed to build Redstonium.
 
 1.  Clone the repository:
     ```sh
-    git clone https://github.com/OmarAfet/Rustified.git
-    cd Rustified
+    git clone https://github.com/OmarAfet/Redstonium.git
+    cd Redstonium
     ```
 
 2.  Build the project for release:
@@ -32,7 +32,7 @@ You need the Rust toolchain installed to build Rustified.
 
 ## Usage
 
-Rustified is controlled via subcommands. You can see all available commands and options by running:
+Redstonium is controlled via subcommands. You can see all available commands and options by running:
 
 ```sh
 rustified --help
@@ -48,7 +48,7 @@ rustified --help
     ```
 
 2.  **Launch the instance:**
-    The first time you launch an instance, Rustified will guide you through the Microsoft authentication process in your web browser. After that, your login will be cached.
+    The first time you launch an instance, Redstonium will guide you through the Microsoft authentication process in your web browser. After that, your login will be cached.
 
     ```sh
     rustified launch vanilla-1-21

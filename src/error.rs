@@ -1,7 +1,7 @@
 use std::fmt;
 use thiserror::Error;
 
-/// Custom error type for the Rustified launcher
+/// Custom error type for the Redstonium launcher
 #[derive(Debug, Error)]
 pub enum RustifiedError {
     /// Authentication-related errors
@@ -146,7 +146,7 @@ impl fmt::Display for RustifiedError {
 
         write!(
             f,
-            "{error_msg}\n\nIf this error persists, please consider opening an issue at: https://github.com/OmarAfet/Rustified/issues"
+            "{error_msg}\n\nIf this error persists, please consider opening an issue at: https://github.com/OmarAfet/Redstonium/issues"
         )
     }
 }

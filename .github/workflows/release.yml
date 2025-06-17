@@ -48,14 +48,14 @@ jobs:
         shell: bash
         run: |
           TAG_NAME=${GITHUB_REF#refs/tags/}
-          BINARY_NAME="Rustified${{ matrix.extension }}"
-          RELEASE_NAME="Rustified-$TAG_NAME-${{ matrix.name }}"
+          BINARY_NAME="Redstonium${{ matrix.extension }}"
+          RELEASE_NAME="Redstonium-$TAG_NAME-${{ matrix.name }}"
           mkdir -p release
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             cp "target/${{ matrix.target }}/release/${BINARY_NAME}" "release/${RELEASE_NAME}${{ matrix.extension }}"
             echo "asset_path=release/${RELEASE_NAME}${{ matrix.extension }}" >> $GITHUB_OUTPUT
           else
-            cp "target/${{ matrix.target }}/release/Rustified" "release/${BINARY_NAME}"
+            cp "target/${{ matrix.target }}/release/Redstonium" "release/${BINARY_NAME}"
             cd release
             tar -czf "${RELEASE_NAME}.tar.gz" "${BINARY_NAME}"
             rm "${BINARY_NAME}"

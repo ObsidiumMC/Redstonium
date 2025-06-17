@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand, ValueEnum};
 
 #[derive(Parser)]
-#[command(name = "Rustified")]
+#[command(name = "Redstonium")]
 #[command(about = "A Minecraft CLI launcher written in Rust")]
 #[command(version = "0.3.1")]
 pub struct Cli {

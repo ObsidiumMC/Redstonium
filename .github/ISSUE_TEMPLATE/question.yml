@@ -1,12 +1,12 @@
 name: Question
-description: Ask a question about using Rustified
+description: Ask a question about using Redstonium
 title: "[QUESTION] "
 labels: [question, triage]
 body:
   - type: markdown
     attributes:
       value: |
-        Have a question about using Rustified? We're here to help! Please check the documentation first, but if you can't find the answer, feel free to ask.
+        Have a question about using Redstonium? We're here to help! Please check the documentation first, but if you can't find the answer, feel free to ask.
 
   - type: dropdown
     id: category
@@ -47,7 +47,7 @@ body:
     id: version
     attributes:
       label: Version
-      description: What version of Rustified are you using?
+      description: What version of Redstonium are you using?
       placeholder: e.g., v1.0.0 or commit hash
     validations:
       required: false

@@ -220,7 +220,7 @@ impl InstanceManager {
         let valid_version = manifest.versions.iter().any(|v| v.id == version);
         if !valid_version {
             return Err(InstanceError::invalid_config(format!(
-                "Minecraft version '{version}' does not exist. Use 'Rustified list' to see valid versions.",
+                "Minecraft version '{version}' does not exist. Use 'Redstonium list' to see valid versions.",
 
             ))
             .into());

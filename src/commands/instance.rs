@@ -21,7 +21,7 @@ pub async fn handle_instance_command(
 
             if instances.is_empty() {
                 info!(
-                    "No instances found. Create one with: Rustified instance create <name> <version>"
+                    "No instances found. Create one with: Redstonium instance create <name> <version>"
                 );
             } else {
                 info!("Available instances:");

@@ -1,6 +1,6 @@
-# Contributing to Rustified
+# Contributing to Redstonium
 
-Thank you for your interest in contributing to Rustified. We appreciate your help in making this project better. All contributions are welcome, from bug reports to new features.
+Thank you for your interest in contributing to Redstonium. We appreciate your help in making this project better. All contributions are welcome, from bug reports to new features.
 
 ## How to Contribute
 
@@ -11,7 +11,7 @@ There are several ways you can contribute to the project.
 If you find a bug, please open an issue on the GitHub repository. To help us resolve the issue quickly, please include the following information in your report:
 
 - A clear and descriptive title.
-- The version of Rustified you are using.
+- The version of Redstonium you are using.
 - Your operating system.
 - Detailed steps to reproduce the bug.
 - Any relevant log output or error messages.
@@ -38,8 +38,8 @@ To get started with development, you will need the Rust toolchain installed.
 
 1.  **Clone your fork:**
     ```sh
-    git clone https://github.com/YourUsername/Rustified.git
-    cd Rustified
+    git clone https://github.com/YourUsername/Redstonium.git
+    cd Redstonium
     ```
 
 2.  **Build the project:**

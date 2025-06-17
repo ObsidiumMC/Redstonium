@@ -1,4 +1,4 @@
-//! Rustified Minecraft Launcher
+//! Redstonium Minecraft Launcher
 //!
 //! A command-line Minecraft launcher written in Rust.
 
@@ -23,7 +23,7 @@ async fn main() -> crate::error::Result<()> {
     let cli = Cli::parse();
 
     info!(
-        "Rustified Minecraft Launcher v{}",
+        "Redstonium Minecraft Launcher v{}",
         env!("CARGO_PKG_VERSION")
     );
     info!("===================================");
