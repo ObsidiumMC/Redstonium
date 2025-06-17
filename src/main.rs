@@ -1,4 +1,8 @@
-#![warn(clippy::pedantic, clippy::unwrap_used, clippy::expect_used, dead_code)]
+//! Rustified Minecraft Launcher
+//!
+//! A command-line Minecraft launcher written in Rust.
+
+#![deny(clippy::too_many_lines, clippy::panic)]
 
 mod auth;
 pub mod cli;
@@ -18,8 +22,8 @@ async fn main() -> crate::error::Result<()> {
 
     let cli = Cli::parse();
 
-    info!("Rustified Minecraft Launcher v0.3.1");
-    info!("=====================================");
+    info!("Rustified Minecraft Launcher v{}", env!("CARGO_PKG_VERSION"));
+    info!("===================================");
 
     // Initialize the launcher
     debug!("Initializing launcher...");

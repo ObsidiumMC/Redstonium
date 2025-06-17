@@ -146,7 +146,7 @@ impl fmt::Display for RustifiedError {
 
         write!(
             f,
-            "{error_msg}\n\nIf this error persists, please consider opening an issue at: https://github.com/OmarAfet/rustified/issues"
+            "{error_msg}\n\nIf this error persists, please consider opening an issue at: https://github.com/OmarAfet/Rustified/issues"
         )
     }
 }
@@ -279,128 +279,157 @@ impl RustifiedError {
 }
 
 impl AuthError {
+    /// Create a new Microsoft authentication error
     pub fn microsoft_auth(msg: impl Into<String>) -> Self {
         Self::MicrosoftAuth(msg.into())
     }
 
+    /// Create a new Xbox Live authentication error
     pub fn xbox_auth(msg: impl Into<String>) -> Self {
         Self::XboxAuth(msg.into())
     }
 
+    /// Create a new Minecraft authentication error
     pub fn minecraft_auth(msg: impl Into<String>) -> Self {
         Self::MinecraftAuth(msg.into())
     }
 
+    /// Create a new game ownership verification error
     pub fn game_ownership(msg: impl Into<String>) -> Self {
         Self::GameOwnership(msg.into())
     }
 
+    /// Create a new profile retrieval error
     pub fn profile_retrieval(msg: impl Into<String>) -> Self {
         Self::ProfileRetrieval(msg.into())
     }
 
+    /// Create a new cache operation error
     pub fn cache_error(msg: impl Into<String>) -> Self {
         Self::CacheError(msg.into())
     }
 
+    /// Create a new OAuth flow error
     pub fn oauth_error(msg: impl Into<String>) -> Self {
         Self::OAuthError(msg.into())
     }
 }
 
 impl JavaError {
+    /// Create a new Java installation not found error
     pub fn not_found(msg: impl Into<String>) -> Self {
         Self::NotFound(msg.into())
     }
 
+    /// Create a new Java version parsing error
     pub fn version_parsing(msg: impl Into<String>) -> Self {
         Self::VersionParsing(msg.into())
     }
 
+    /// Create a new Java execution failed error
     pub fn execution_failed(msg: impl Into<String>) -> Self {
         Self::ExecutionFailed(msg.into())
     }
 
+    /// Create a new unsupported Java version error
     pub fn unsupported_version(msg: impl Into<String>) -> Self {
         Self::UnsupportedVersion(msg.into())
     }
 }
 
 impl GameError {
+    /// Create a new game version not found error
     pub fn version_not_found(msg: impl Into<String>) -> Self {
         Self::VersionNotFound(msg.into())
     }
 
+    /// Create a new invalid version format error
     pub fn invalid_version(msg: impl Into<String>) -> Self {
         Self::InvalidVersion(msg.into())
     }
 
+    /// Create a new game preparation failed error
     pub fn preparation_failed(msg: impl Into<String>) -> Self {
         Self::PreparationFailed(msg.into())
     }
 
+    /// Create a new game launch failed error
     pub fn launch_failed(msg: impl Into<String>) -> Self {
         Self::LaunchFailed(msg.into())
     }
 
+    /// Create a new assets download failed error
     pub fn assets_download(msg: impl Into<String>) -> Self {
         Self::AssetsDownload(msg.into())
     }
 
+    /// Create a new libraries download failed error
     pub fn libraries_download(msg: impl Into<String>) -> Self {
         Self::LibrariesDownload(msg.into())
     }
 }
 
 impl InstanceError {
+    /// Create a new instance not found error
     pub fn not_found(msg: impl Into<String>) -> Self {
         Self::NotFound(msg.into())
     }
 
+    /// Create a new instance already exists error
     pub fn already_exists(msg: impl Into<String>) -> Self {
         Self::AlreadyExists(msg.into())
     }
 
+    /// Create a new invalid instance configuration error
     pub fn invalid_config(msg: impl Into<String>) -> Self {
         Self::InvalidConfig(msg.into())
     }
 
+    /// Create a new instance creation failed error
     pub fn creation_failed(msg: impl Into<String>) -> Self {
         Self::CreationFailed(msg.into())
     }
 
+    /// Create a new instance deletion failed error
     pub fn deletion_failed(msg: impl Into<String>) -> Self {
         Self::DeletionFailed(msg.into())
     }
 }
 
 impl FileManagerError {
+    /// Create a new file download failed error
     pub fn download_failed(msg: impl Into<String>) -> Self {
         Self::DownloadFailed(msg.into())
     }
 
+    /// Create a new file verification failed error
     pub fn verification_failed(msg: impl Into<String>) -> Self {
         Self::VerificationFailed(msg.into())
     }
 
+    /// Create a new archive extraction failed error
     pub fn extraction_failed(msg: impl Into<String>) -> Self {
         Self::ExtractionFailed(msg.into())
     }
 
+    /// Create a new directory creation failed error
     pub fn directory_creation(msg: impl Into<String>) -> Self {
         Self::DirectoryCreation(msg.into())
     }
 
+    /// Create a new version not found error for file manager
     #[must_use]
     pub fn version_not_found(msg: &str) -> Self {
         Self::DownloadFailed(format!("Version not found: {msg}"))
     }
 
+    /// Create a new filesystem error
     #[must_use]
     pub fn filesystem_error(msg: String) -> Self {
         Self::DirectoryCreation(msg)
     }
 
+    /// Create a new validation failed error
     #[must_use]
     pub fn validation_failed(msg: String) -> Self {
         Self::VerificationFailed(msg)

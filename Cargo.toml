@@ -1,12 +1,12 @@
 [package]
-name = "rustified"
+name = "Rustified"
 version = "0.3.1"
 edition = "2024"
 authors = ["OmarAfet"]
 description = "A command-line Minecraft launcher written in Rust."
 readme = "README.md"
-homepage = "https://github.com/OmarAfet/rustified"
-repository = "https://github.com/OmarAfet/rustified"
+homepage = "https://github.com/OmarAfet/Rustified"
+repository = "https://github.com/OmarAfet/Rustified"
 license = "MIT"
 keywords = [
     "minecraft",

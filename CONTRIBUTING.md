@@ -14,18 +14,18 @@ Thank you for your interest in contributing to Rustified! This document provides
 
 1. **Fork the repository**
    ```bash
-   # Visit https://github.com/OmarAfet/rustified and click "Fork"
+   # Visit https://github.com/OmarAfet/Rustified and click "Fork"
    ```
 
 2. **Clone your fork**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/rustified.git
-   cd rustified
+   git clone https://github.com/YOUR_USERNAME/Rustified.git
+   cd Rustified
    ```
 
 3. **Add upstream remote**
    ```bash
-   git remote add upstream https://github.com/OmarAfet/rustified.git
+   git remote add upstream https://github.com/OmarAfet/Rustified.git
    ```
 
 4. **Install dependencies and build**

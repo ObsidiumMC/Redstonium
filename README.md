@@ -1,8 +1,8 @@
-# rustified
+# Rustified
 
 A command-line Minecraft launcher written in Rust.
 
-`rustified` provides a text-based interface for launching and managing Minecraft instances, designed for automation, scripting, and environments where a graphical launcher isn't suitable or preferred.
+`Rustified` provides a text-based interface for launching and managing Minecraft instances, designed for automation, scripting, and environments where a graphical launcher isn't suitable or preferred.
 
 ## Features
 
@@ -27,21 +27,21 @@ Based on the current implementation and planned features:
 
 1.  Clone the repository:
     ```bash
-    git clone https://github.com/OmarAfet/rustified.git
-    cd rustified
+    git clone https://github.com/OmarAfet/Rustified.git
+    cd Rustified
     ```
 2.  Build the project:
     ```bash
     cargo build --release
     ```
-    The executable will be located at `./target/release/rustified`.
+    The executable will be located at `./target/release/Rustified`.
 
 ## Usage
 
-Run `./target/release/rustified --help` to see the full list of commands.
+Run `./target/release/Rustified --help` to see the full list of commands.
 
 ```bash
-./target/release/rustified --help
+./target/release/Rustified --help
 ```
 
 Here are some common commands:
@@ -51,28 +51,28 @@ Here are some common commands:
 Fetches and displays a list of available Minecraft versions from the Mojang manifest.
 
 ```bash
-./target/release/rustified list
+./target/release/Rustified list
 ```
 
 You can filter by type, search, limit results, and more:
 
 ```bash
-./target/release/rustified list --limit 20 --types release snapshot --filter 1.20 --show-installed
+./target/release/Rustified list --limit 20 --types release snapshot --filter 1.20 --show-installed
 ```
 
 ### Authentication
 
-`rustified` uses Microsoft account authentication. The `auth` command allows you to manage your login session. You will be prompted to authenticate via your web browser on the first `launch` attempt if no valid session is found.
+`Rustified` uses Microsoft account authentication. The `auth` command allows you to manage your login session. You will be prompted to authenticate via your web browser on the first `launch` attempt if no valid session is found.
 
 ```bash
 # Check current authentication status
-./target/release/rustified auth status
+./target/release/Rustified auth status
 
 # Clear cached authentication
-./target/release/rustified auth clear
+./target/release/Rustified auth clear
 
 # Force a re-authentication flow
-./target/release/rustified auth refresh
+./target/release/Rustified auth refresh
 ```
 
 ### Instance Management
@@ -81,20 +81,20 @@ Instances provide isolated game environments.
 
 ```bash
 # List all instances
-./target/release/rustified instance list
+./target/release/Rustified instance list
 
 # Create a new instance named 'my-world' using Minecraft version '1.20.4'
-# Replace '1.20.4' with a version from 'rustified list'
-./target/release/rustified instance create my-world 1.20.4 --description "My main survival world"
+# Replace '1.20.4' with a version from 'Rustified list'
+./target/release/Rustified instance create my-world 1.20.4 --description "My main survival world"
 
 # Show details for an instance
-./target/release/rustified instance info my-world
+./target/release/Rustified instance info my-world
 
 # Set memory allocation (in MB) for an instance (e.g., 4GB)
-./target/release/rustified instance memory my-world 4096
+./target/release/Rustified instance memory my-world 4096
 
 # Delete an instance
-./target/release/rustified instance delete my-world
+./target/release/Rustified instance delete my-world
 ```
 
 ### Prepare Game Files
@@ -103,7 +103,7 @@ Download the necessary files for a specific Minecraft version without launching 
 
 ```bash
 # Prepare game files for version 1.20.4
-./target/release/rustified prepare 1.20.4
+./target/release/Rustified prepare 1.20.4
 ```
 
 ### Launch Game
@@ -112,7 +112,7 @@ Launch a specific instance. If it's the first time launching this instance or ve
 
 ```bash
 # Launch the 'my-world' instance
-./target/release/rustified launch my-world
+./target/release/Rustified launch my-world
 ```
 
 ### Java Management
@@ -121,10 +121,10 @@ Check detected Java installations and recommended versions.
 
 ```bash
 # List detected Java installations
-./target/release/rustified java list
+./target/release/Rustified java list
 
 # Show recommended Java version for a Minecraft version
-./target/release/rustified java recommend 1.20.4
+./target/release/Rustified java recommend 1.20.4
 ```
 
 ## Contributing
