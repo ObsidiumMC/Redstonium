@@ -1,9 +1,11 @@
+use std::env;
+
 use clap::{Parser, Subcommand, ValueEnum};
 
 #[derive(Parser)]
 #[command(name = "Redstonium")]
 #[command(about = "A Minecraft CLI launcher written in Rust")]
-#[command(version = "0.3.1")]
+#[command(version = env!("CARGO_PKG_VERSION"))]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,

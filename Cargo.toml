@@ -1,6 +1,6 @@
 [package]
 name = "Redstonium"
-version = "0.3.1"
+version = "0.3.4"
 edition = "2024"
 authors = ["OmarAfet"]
 description = "A command-line Minecraft launcher written in Rust."
