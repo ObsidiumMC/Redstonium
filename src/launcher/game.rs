@@ -325,10 +325,11 @@ impl GameLauncher {
                     minecraft_dir,
                     instance,
                 );
-                // Filter out demo argument when user has valid auth
-                if resolved != "--demo" {
-                    cmd.arg(resolved);
+                // Filter out problematic arguments
+                if launcher::game::GameLauncher::should_skip_argument(&resolved) {
+                    return;
                 }
+                cmd.arg(resolved);
             }
             ArgumentValue::Conditional { rules, value } => {
                 // Check if rules match current environment
@@ -342,10 +343,11 @@ impl GameLauncher {
                                 minecraft_dir,
                                 instance,
                             );
-                            // Filter out demo argument when user has valid auth
-                            if resolved != "--demo" {
-                                cmd.arg(resolved);
+                            // Filter out problematic arguments
+                            if launcher::game::GameLauncher::should_skip_argument(&resolved) {
+                                return;
                             }
+                            cmd.arg(resolved);
                         }
                         ArgumentValueType::Multiple(vals) => {
                             for val in vals {
@@ -357,10 +359,11 @@ impl GameLauncher {
                                         minecraft_dir,
                                         instance,
                                     );
-                                // Filter out demo argument when user has valid auth
-                                if resolved != "--demo" {
-                                    cmd.arg(resolved);
+                                // Filter out problematic arguments
+                                if launcher::game::GameLauncher::should_skip_argument(&resolved) {
+                                    continue;
                                 }
+                                cmd.arg(resolved);
                             }
                         }
                     }
@@ -443,10 +446,11 @@ impl GameLauncher {
                 )?;
                 args.push(resolved);
             } else {
-                // Filter out demo argument when user has valid auth
-                if part != "--demo" {
-                    args.push(part.to_string());
+                // Filter out problematic arguments
+                if launcher::game::GameLauncher::should_skip_argument(part) {
+                    continue;
                 }
+                args.push(part.to_string());
             }
         }
 
@@ -502,10 +506,20 @@ impl GameLauncher {
         resolved = resolved.replace("${auth_xuid}", ""); // Not needed for our launcher
         resolved = resolved.replace("${resolution_width}", "854"); // Default resolution
         resolved = resolved.replace("${resolution_height}", "480"); // Default resolution
-        resolved = resolved.replace("${quickPlayPath}", ""); // Empty to avoid Quick Play errors
-        resolved = resolved.replace("${quickPlaySingleplayer}", "");
-        resolved = resolved.replace("${quickPlayMultiplayer}", "");
-        resolved = resolved.replace("${quickPlayRealms}", "");
+        
+        // Handle Quick Play variables by not passing them if they're empty
+        // This prevents the "Only one quick play option can be specified" error
+        if resolved.contains("${quickPlayPath}") ||
+           resolved.contains("${quickPlaySingleplayer}") ||
+           resolved.contains("${quickPlayMultiplayer}") ||
+           resolved.contains("${quickPlayRealms}") {
+            // If the argument contains Quick Play variables, replace them with empty
+            // The should_skip_argument function will filter these out
+            resolved = resolved.replace("${quickPlayPath}", "");
+            resolved = resolved.replace("${quickPlaySingleplayer}", "");
+            resolved = resolved.replace("${quickPlayMultiplayer}", "");
+            resolved = resolved.replace("${quickPlayRealms}", "");
+        }
 
         resolved
     }
@@ -628,6 +642,37 @@ impl GameLauncher {
                 return rule.action == "allow";
             }
         }
+        false
+    }
+
+    /// Check if an argument should be skipped to avoid conflicts
+    fn should_skip_argument(arg: &str) -> bool {
+        // Skip demo argument when user has valid auth
+        if arg == "--demo" {
+            return true;
+        }
+
+        // Skip Quick Play arguments that are empty or contain empty values
+        if arg.starts_with("--quickPlayPath") || 
+           arg.starts_with("--quickPlaySingleplayer") || 
+           arg.starts_with("--quickPlayMultiplayer") || 
+           arg.starts_with("--quickPlayRealms") {
+            // Skip if the argument is just the flag with no value or empty value
+            if arg.contains('=') {
+                let parts: Vec<&str> = arg.split('=').collect();
+                if parts.len() > 1 && parts[1].is_empty() {
+                    return true;
+                }
+            }
+            // Also skip standalone Quick Play flags that would expect a following argument
+            if arg == "--quickPlayPath" || 
+               arg == "--quickPlaySingleplayer" || 
+               arg == "--quickPlayMultiplayer" || 
+               arg == "--quickPlayRealms" {
+                return true;
+            }
+        }
+
         false
     }
 }
