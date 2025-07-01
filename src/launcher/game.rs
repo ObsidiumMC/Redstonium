@@ -506,13 +506,14 @@ impl GameLauncher {
         resolved = resolved.replace("${auth_xuid}", ""); // Not needed for our launcher
         resolved = resolved.replace("${resolution_width}", "854"); // Default resolution
         resolved = resolved.replace("${resolution_height}", "480"); // Default resolution
-        
+
         // Handle Quick Play variables by not passing them if they're empty
         // This prevents the "Only one quick play option can be specified" error
-        if resolved.contains("${quickPlayPath}") ||
-           resolved.contains("${quickPlaySingleplayer}") ||
-           resolved.contains("${quickPlayMultiplayer}") ||
-           resolved.contains("${quickPlayRealms}") {
+        if resolved.contains("${quickPlayPath}")
+            || resolved.contains("${quickPlaySingleplayer}")
+            || resolved.contains("${quickPlayMultiplayer}")
+            || resolved.contains("${quickPlayRealms}")
+        {
             // If the argument contains Quick Play variables, replace them with empty
             // The should_skip_argument function will filter these out
             resolved = resolved.replace("${quickPlayPath}", "");
@@ -653,10 +654,11 @@ impl GameLauncher {
         }
 
         // Skip Quick Play arguments that are empty or contain empty values
-        if arg.starts_with("--quickPlayPath") || 
-           arg.starts_with("--quickPlaySingleplayer") || 
-           arg.starts_with("--quickPlayMultiplayer") || 
-           arg.starts_with("--quickPlayRealms") {
+        if arg.starts_with("--quickPlayPath")
+            || arg.starts_with("--quickPlaySingleplayer")
+            || arg.starts_with("--quickPlayMultiplayer")
+            || arg.starts_with("--quickPlayRealms")
+        {
             // Skip if the argument is just the flag with no value or empty value
             if arg.contains('=') {
                 let parts: Vec<&str> = arg.split('=').collect();
@@ -665,10 +667,11 @@ impl GameLauncher {
                 }
             }
             // Also skip standalone Quick Play flags that would expect a following argument
-            if arg == "--quickPlayPath" || 
-               arg == "--quickPlaySingleplayer" || 
-               arg == "--quickPlayMultiplayer" || 
-               arg == "--quickPlayRealms" {
+            if arg == "--quickPlayPath"
+                || arg == "--quickPlaySingleplayer"
+                || arg == "--quickPlayMultiplayer"
+                || arg == "--quickPlayRealms"
+            {
                 return true;
             }
         }
